@@ -10,9 +10,19 @@
 # See /LICENSE for more information.
 #
 
-# Uncomment a feed source
-#sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
-
 # Add a feed source
-echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
-#echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# PassWall
+echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages' >>feeds.conf.default
+echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+
+# Lucky
+echo 'src-git lucky https://github.com/gdy666/luci-app-lucky' >>feeds.conf.default
+
+# PushBot (全能推送)
+echo 'src-git pushbot https://github.com/zzsj0928/luci-app-pushbot' >>feeds.conf.default
+
+# Fluent Theme
+echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent' >>feeds.conf.default
+
+# 常用额外插件源 (diskman / dockerman 等)
+echo 'src-git kenzok8 https://github.com/kenzok8/openwrt-packages' >>feeds.conf.default
