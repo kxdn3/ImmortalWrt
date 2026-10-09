@@ -1,28 +1,17 @@
 #!/bin/bash
 #
-# https://github.com/P3TERX/Actions-OpenWrt
-# File name: diy-part1.sh
-# Description: OpenWrt DIY script part 1 (Before Update feeds)
-#
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
+# diy-part1.sh - Before Update feeds
 #
 
-# Add a feed source
 # PassWall
-echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages' >>feeds.conf.default
-echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git;main' >>feeds.conf.default
+echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall.git;main' >>feeds.conf.default
 
-# Lucky
-echo 'src-git lucky https://github.com/gdy666/luci-app-lucky' >>feeds.conf.default
+# PushBot 全能推送
+echo 'src-git pushbot https://github.com/zzsj0928/luci-app-pushbot.git' >>feeds.conf.default
 
-# PushBot (全能推送)
-echo 'src-git pushbot https://github.com/zzsj0928/luci-app-pushbot' >>feeds.conf.default
+# Fluent 主题
+echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent.git' >>feeds.conf.default
 
-# Fluent Theme
-echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent' >>feeds.conf.default
-
-# 常用额外插件源 (diskman / dockerman 等)
-echo 'src-git kenzok8 https://github.com/kenzok8/openwrt-packages' >>feeds.conf.default
+# Lucky（单独克隆到 package，避免与其他 feed 冲突）
+git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/luci-app-lucky
