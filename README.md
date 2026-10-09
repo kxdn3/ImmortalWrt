@@ -1,4 +1,4 @@
-# Actions-ImmortalWrt
+# ImmortalWrt云编译
 
 使用 GitHub Actions 云编译 **ImmortalWrt** 固件。
 
@@ -40,7 +40,7 @@
 ### 2. 开始编译
 
 1. 打开仓库 **Actions** 页面
-2. 选择 **OpenWrt Builder**
+2. 选择 **ImmortalWrt云编译**
 3. 点击 **Run workflow** → **Run workflow**
 4. 等待 1.5~3 小时
 5. 完成后在 Artifacts 或 Releases 下载固件
