@@ -52,10 +52,13 @@ cat >> .config << 'EOF'
 # === 用户要求的插件 ===
 CONFIG_PACKAGE_luci-app-passwall=y
 CONFIG_PACKAGE_luci-app-lucky=y
+CONFIG_PACKAGE_lucky=y
 CONFIG_PACKAGE_luci-theme-fluent=y
 CONFIG_PACKAGE_luci-app-diskman=y
 CONFIG_PACKAGE_luci-app-dockerman=y
 CONFIG_PACKAGE_luci-app-pushbot=y
+CONFIG_PACKAGE_iputils-arping=y
+CONFIG_PACKAGE_jq=y
 
 # zsh 相关
 CONFIG_PACKAGE_zsh=y

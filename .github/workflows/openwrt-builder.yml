@@ -72,7 +72,11 @@ jobs:
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a
+        # 删掉与 package/ 里第三方包同名的 feed 包，并重建索引
+        $GITHUB_WORKSPACE/$DIY_P1_SH cleanup
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
