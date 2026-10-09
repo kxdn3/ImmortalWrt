@@ -24,7 +24,11 @@ sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 echo "CONFIG_TARGET_KERNEL_PARTSIZE=16" >> .config
 # RootFS 分区 2048 MiB (2GB)
 echo "CONFIG_TARGET_ROOTFS_PARTSIZE=2048" >> .config
-# BIOS Boot Partition 已在现代源码中默认 1024k，无需额外设置
+
+# BIOS Boot Partition：源码默认是 256，强制改为 1024（避免 gdisk 警告）
+sed -i 's/\t256$/\t1024/' target/linux/x86/image/Makefile
+# 兼容可能存在的空格写法
+sed -i 's/ 256$/ 1024/' target/linux/x86/image/Makefile
 
 # ========== 默认 Shell 改为 zsh ==========
 # 确保编译 zsh 包，并在首次启动时修改 root 的 shell
