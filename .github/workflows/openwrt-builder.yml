@@ -15,6 +15,9 @@ name: OpenWrt Builder
 on:
   repository_dispatch:
   workflow_dispatch:
+  schedule:
+    # 每天北京时间凌晨 2:00 自动编译 (UTC 18:00)
+    - cron: '0 18 * * *'
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -153,7 +156,7 @@ jobs:
       uses: dev-drprasad/delete-older-releases@master
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        keep_latest: 3
+        keep_latest: 5
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
