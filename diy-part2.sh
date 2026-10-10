@@ -73,3 +73,26 @@ CONFIG_PACKAGE_e2fsprogs=y
 CONFIG_PACKAGE_fdisk=y
 CONFIG_PACKAGE_parted=y
 EOF
+
+# ==========
+# 只保留 x86 物理机刷机包。追加在最后，覆盖前面可能打开的虚拟机镜像。
+# ==========
+cat >> .config << 'EOF'
+
+# === 仅 x86 物理机整盘刷机镜像 ===
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y
+CONFIG_TARGET_x86_64_DEVICE_generic=y
+CONFIG_TARGET_ROOTFS_EXT4FS=y
+CONFIG_TARGET_IMAGES_GZIP=y
+CONFIG_GRUB_IMAGES=y
+CONFIG_GRUB_EFI_IMAGES=y
+# CONFIG_TARGET_ROOTFS_SQUASHFS is not set
+# CONFIG_TARGET_ROOTFS_TARGZ is not set
+# CONFIG_ISO_IMAGES is not set
+# CONFIG_QCOW2_IMAGES is not set
+# CONFIG_VDI_IMAGES is not set
+# CONFIG_VMDK_IMAGES is not set
+# CONFIG_VHDX_IMAGES is not set
+# CONFIG_ONIE_INSTALLER_IMAGES is not set
+EOF

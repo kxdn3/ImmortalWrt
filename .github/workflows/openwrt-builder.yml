@@ -9,6 +9,10 @@
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
 #
+# 产物只保留 x86_64 物理机 ext4 整盘刷机包：
+#   *-generic-ext4-combined-efi.img.gz
+#   *-generic-ext4-combined.img.gz
+#
 
 name: ImmortalWrt云编译
 
@@ -112,12 +116,41 @@ jobs:
         $GITHUB_WORKSPACE/$DIY_P2_SH
         # 启用 ccache 加速编译
         echo "CONFIG_CCACHE=y" >> .config
+        # 再写一次，确保即使 .config / diy 被改过，也不会编出虚拟机镜像
+        cat >> .config << 'EOF'
+
+# === 工作流强制：仅 x86 物理机整盘刷机镜像 ===
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y
+CONFIG_TARGET_x86_64_DEVICE_generic=y
+CONFIG_TARGET_ROOTFS_EXT4FS=y
+CONFIG_TARGET_IMAGES_GZIP=y
+CONFIG_GRUB_IMAGES=y
+CONFIG_GRUB_EFI_IMAGES=y
+# CONFIG_TARGET_ROOTFS_SQUASHFS is not set
+# CONFIG_TARGET_ROOTFS_TARGZ is not set
+# CONFIG_ISO_IMAGES is not set
+# CONFIG_QCOW2_IMAGES is not set
+# CONFIG_VDI_IMAGES is not set
+# CONFIG_VMDK_IMAGES is not set
+# CONFIG_VHDX_IMAGES is not set
+# CONFIG_ONIE_INSTALLER_IMAGES is not set
+EOF
 
     - name: Download package
       id: package
       run: |
         cd openwrt
         make defconfig
+        echo "===== 镜像相关配置 ====="
+        grep -E '^(# )?CONFIG_(GRUB_IMAGES|GRUB_EFI_IMAGES|TARGET_ROOTFS_EXT4FS|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_IMAGES_GZIP|ONIE_INSTALLER_IMAGES)' .config || true
+        grep -q '^CONFIG_GRUB_EFI_IMAGES=y' .config
+        grep -q '^CONFIG_GRUB_IMAGES=y' .config
+        grep -q '^CONFIG_TARGET_ROOTFS_EXT4FS=y' .config
+        if grep -qE '^CONFIG_(ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ONIE_INSTALLER_IMAGES)=y' .config; then
+          echo "仍有非物理机镜像被打开，停止编译"
+          exit 1
+        fi
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
@@ -150,10 +183,37 @@ jobs:
       id: organize
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
+        set -euo pipefail
+        shopt -s nullglob
+        dst="$GITHUB_WORKSPACE/firmware"
+        rm -rf "$dst"
+        mkdir -p "$dst"
+        found=0
+        for src in openwrt/bin/targets/*/*; do
+          [ -d "$src" ] || continue
+          for f in \
+            "$src"/*-generic-ext4-combined.img \
+            "$src"/*-generic-ext4-combined.img.gz \
+            "$src"/*-generic-ext4-combined-efi.img \
+            "$src"/*-generic-ext4-combined-efi.img.gz
+          do
+            cp -v "$f" "$dst/"
+            found=$((found + 1))
+          done
+        done
+        if [ "$found" -lt 1 ]; then
+          echo "未找到 x86 物理机刷机包，目标目录内容："
+          find openwrt/bin/targets -maxdepth 3 -type f -printf '%p\n' || true
+          exit 1
+        fi
+        (
+          cd "$dst"
+          sha256sum ./*-generic-ext4-combined*.img* > sha256sums
+        )
+        echo "保留的刷机包："
+        ls -lah "$dst"
+        echo "FIRMWARE=$dst" >> "$GITHUB_ENV"
+        echo "status=success" >> "$GITHUB_OUTPUT"
 
     - name: Upload firmware directory
       uses: actions/upload-artifact@main
@@ -167,7 +227,15 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch release.txt
+        cat > release.txt << 'EOF'
+只包含 x86_64 物理机 ext4 整盘刷机包：
+
+- `*-generic-ext4-combined-efi.img.gz`：UEFI 物理机（解压后整盘写入）
+- `*-generic-ext4-combined.img.gz`：纯 BIOS / CSM 物理机
+
+不含虚拟机镜像、ISO、squashfs 和 rootfs 归档。
+写盘时关掉 Secure Boot，启动模式选 UEFI（老 BIOS 机用不带 efi 的那一个）。
+EOF
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
