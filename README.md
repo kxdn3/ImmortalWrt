@@ -18,7 +18,7 @@
 
 ### 已集成插件
 - **PassWall** (`luci-app-passwall`)
-- **Lucky** (`luci-app-lucky`)
+- **Lucky (sirpdboy 版)** (`luci-app-lucky`)
 - **Fluent 主题** (`luci-theme-fluent`)
 - **DiskMan** (`luci-app-diskman`)
 - **DockerMan** (`luci-app-dockerman`)

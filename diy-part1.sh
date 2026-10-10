@@ -89,11 +89,11 @@ clone_pkg \
     https://github.com/zzsj0928/luci-app-pushbot \
     package/luci-app-pushbot
 
-# Lucky：仓库里同时有界面包和核心包，必须拆开
+# Lucky (sirpdboy 版)：仓库里同时有界面包和核心包，必须拆开
 # 否则核心包嵌在界面包里，编译时扫不到
-echo ">>> 添加 Lucky"
+echo ">>> 添加 Lucky (sirpdboy 版)"
 clone_pkg \
-    https://github.com/gdy666/luci-app-lucky.git \
+    https://github.com/sirpdboy/luci-app-lucky.git \
     package/tmp-lucky
 
 if [ -d package/tmp-lucky/lucky ]; then
