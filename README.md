@@ -10,8 +10,8 @@
 |------|------|
 | 源码 | [immortalwrt/immortalwrt](https://github.com/immortalwrt/immortalwrt) `master` |
 | 目标 | **x86_64 物理机**（Generic） |
-| 刷机包 | `*-generic-ext4-combined-efi.img.gz`（UEFI）<br>`*-generic-ext4-combined.img.gz`（纯 BIOS） |
-| 不会产出 | squashfs、ISO、rootfs.tar.gz、VMDK、VDI、VHDX、QCOW2 |
+| 刷机包 | ext4 / squashfs 各两份：`combined-efi`（UEFI）和 `combined`（纯 BIOS） |
+| 不会产出 | ISO、rootfs.tar.gz、单独的 rootfs.img、VMDK、VDI、VHDX、QCOW2 |
 | 默认 IP | **10.0.0.1** |
 | 首次登录密码 | **空**（直接回车） |
 | 默认 Shell | **zsh** |
@@ -38,6 +38,8 @@
 5. 完成后在 Artifacts 或 Releases 下载固件
 
 解压出 `.img` 后，用写盘工具**整盘写入**目标硬盘（不要写到某一个分区）。BIOS 里关掉 Secure Boot，启动模式选 UEFI。老 BIOS 机器用不带 `-efi` 的那一个。
+
+squashfs 版可以在后台恢复出厂；ext4 版更方便扩容。
 
 ### 2. 自定义修改
 

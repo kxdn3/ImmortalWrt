@@ -9,9 +9,11 @@
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
 #
-# 产物只保留 x86_64 物理机 ext4 整盘刷机包：
+# 产物只保留 x86_64 物理机整盘刷机包（ext4 + squashfs）：
 #   *-generic-ext4-combined-efi.img.gz
 #   *-generic-ext4-combined.img.gz
+#   *-generic-squashfs-combined-efi.img.gz
+#   *-generic-squashfs-combined.img.gz
 #
 
 name: ImmortalWrt云编译
@@ -119,15 +121,15 @@ jobs:
         # 再写一次，确保即使 .config / diy 被改过，也不会编出虚拟机镜像
         cat >> .config << 'EOF'
 
-# === 工作流强制：仅 x86 物理机整盘刷机镜像 ===
+# === 工作流强制：仅 x86 物理机整盘刷机镜像（ext4 + squashfs）===
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
 CONFIG_TARGET_x86_64_DEVICE_generic=y
 CONFIG_TARGET_ROOTFS_EXT4FS=y
+CONFIG_TARGET_ROOTFS_SQUASHFS=y
 CONFIG_TARGET_IMAGES_GZIP=y
 CONFIG_GRUB_IMAGES=y
 CONFIG_GRUB_EFI_IMAGES=y
-# CONFIG_TARGET_ROOTFS_SQUASHFS is not set
 # CONFIG_TARGET_ROOTFS_TARGZ is not set
 # CONFIG_ISO_IMAGES is not set
 # CONFIG_QCOW2_IMAGES is not set
@@ -147,7 +149,8 @@ EOF
         grep -q '^CONFIG_GRUB_EFI_IMAGES=y' .config
         grep -q '^CONFIG_GRUB_IMAGES=y' .config
         grep -q '^CONFIG_TARGET_ROOTFS_EXT4FS=y' .config
-        if grep -qE '^CONFIG_(ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ONIE_INSTALLER_IMAGES)=y' .config; then
+        grep -q '^CONFIG_TARGET_ROOTFS_SQUASHFS=y' .config
+        if grep -qE '^CONFIG_(ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_ROOTFS_TARGZ|ONIE_INSTALLER_IMAGES)=y' .config; then
           echo "仍有非物理机镜像被打开，停止编译"
           exit 1
         fi
@@ -195,7 +198,11 @@ EOF
             "$src"/*-generic-ext4-combined.img \
             "$src"/*-generic-ext4-combined.img.gz \
             "$src"/*-generic-ext4-combined-efi.img \
-            "$src"/*-generic-ext4-combined-efi.img.gz
+            "$src"/*-generic-ext4-combined-efi.img.gz \
+            "$src"/*-generic-squashfs-combined.img \
+            "$src"/*-generic-squashfs-combined.img.gz \
+            "$src"/*-generic-squashfs-combined-efi.img \
+            "$src"/*-generic-squashfs-combined-efi.img.gz
           do
             cp -v "$f" "$dst/"
             found=$((found + 1))
@@ -208,7 +215,7 @@ EOF
         fi
         (
           cd "$dst"
-          sha256sum ./*-generic-ext4-combined*.img* > sha256sums
+          sha256sum ./*-generic-*-combined*.img* > sha256sums
         )
         echo "保留的刷机包："
         ls -lah "$dst"
@@ -228,12 +235,14 @@ EOF
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         cat > release.txt << 'EOF'
-只包含 x86_64 物理机 ext4 整盘刷机包：
+只包含 x86_64 物理机整盘刷机包（ext4 + squashfs）：
 
-- `*-generic-ext4-combined-efi.img.gz`：UEFI 物理机（解压后整盘写入）
-- `*-generic-ext4-combined.img.gz`：纯 BIOS / CSM 物理机
+- `*-generic-ext4-combined-efi.img.gz`：UEFI，ext4
+- `*-generic-ext4-combined.img.gz`：纯 BIOS / CSM，ext4
+- `*-generic-squashfs-combined-efi.img.gz`：UEFI，squashfs（可恢复出厂）
+- `*-generic-squashfs-combined.img.gz`：纯 BIOS / CSM，squashfs
 
-不含虚拟机镜像、ISO、squashfs 和 rootfs 归档。
+不含虚拟机镜像、ISO 和 rootfs 归档。
 写盘时关掉 Secure Boot，启动模式选 UEFI（老 BIOS 机用不带 efi 的那一个）。
 EOF
         echo "status=success" >> $GITHUB_OUTPUT
