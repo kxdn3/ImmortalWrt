@@ -52,12 +52,66 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
+    - name: 删除 Ubuntu 22.04 无用软件
+      run: |
+        echo "清理前："
+        df -hT /
+        # 预装 SDK / 运行时，编译用不到。不删 swap，避免编译时内存不够。
+        sudo rm -rf \
+          /usr/local/lib/android \
+          /usr/share/dotnet \
+          /usr/share/swift \
+          /usr/local/share/powershell \
+          /usr/local/share/chromium \
+          /usr/local/share/boost \
+          /usr/local/share/vcpkg \
+          /usr/local/lib/node_modules \
+          /usr/local/.ghcup \
+          /opt/ghc \
+          /opt/hostedtoolcache \
+          /opt/az \
+          /opt/microsoft \
+          /opt/google \
+          /usr/lib/jvm \
+          /usr/share/miniconda \
+          /usr/local/miniconda \
+          /home/runner/.rustup \
+          /home/runner/.cargo \
+          /home/runner/.dotnet \
+          || true
+        if [ -n "${AGENT_TOOLSDIRECTORY:-}" ]; then
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+        fi
+        sudo docker image prune --all --force || true
+        sudo docker builder prune --all --force || true
+        sudo -E apt-get -qq update || true
+        sudo -E apt-get -y remove --purge \
+          '^aspnetcore-.*' \
+          '^dotnet-.*' \
+          '^llvm-.*' \
+          'php.*' \
+          '^mongodb-.*' \
+          '^mysql-.*' \
+          azure-cli \
+          google-chrome-stable \
+          firefox \
+          powershell \
+          mono-devel \
+          libgl1-mesa-dri \
+          google-cloud-sdk \
+          google-cloud-cli \
+          hhvm \
+          || true
+        sudo -E apt-get -y autoremove --purge || true
+        sudo -E apt-get -qq clean || true
+        echo "清理后："
+        df -hT /
+
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-        sudo docker image prune --all --force
+        sudo rm -rf /etc/apt/sources.list.d/*
         sudo -E apt-get -qq update
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
