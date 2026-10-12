@@ -48,7 +48,7 @@ if [ "${1:-}" = "cleanup" ]; then
     dman="feeds/luci/applications/luci-app-dockerman/Makefile"
     if [ -f "$dman" ]; then
         sed -i '/^[[:space:]]*+docker-compose[[:space:]]*\\[[:space:]]*$/d' "$dman"
-        sed -i 's/[[:space:]]*+docker-compose\([[:space:]]*\\\)\?//g' "$dman"
+        sed -i 's/\([[:space:]]\)+docker-compose\([[:space:]]\|\\\|\$\)/\1\2/g' "$dman"
         echo "    - 已处理 $dman"
         sed -n '/^LUCI_DEPENDS/,/^$/p' "$dman" | sed 's/^/      /'
     else
