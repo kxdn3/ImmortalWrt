@@ -45,7 +45,8 @@ env:
   CCACHE_COMPRESS: 1
 
 jobs:
-  编译:
+  build:
+    name: 编译
     runs-on: ubuntu-22.04
 
     steps:
