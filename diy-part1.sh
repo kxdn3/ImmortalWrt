@@ -66,6 +66,29 @@ if [ "${1:-}" = "cleanup" ]; then
 
     echo ">>> 重建 feed 索引"
     ./scripts/feeds update -i
+
+    # ------------------------------------------------------------
+    # 摘掉 luci-app-dockerman 对 docker-compose 的依赖
+    # ------------------------------------------------------------
+    # 上游 feeds/packages/utils/docker-compose 目前是坏的：compose
+    # v5.5.1 的 go.mod 与 docker/cli@v29.7.2 不兼容，Go 1.27 下大批
+    # 依赖包无法解析，编译到最后阶段必然失败：
+    #   ERROR: package/feeds/packages/docker-compose failed to build.
+    # 而 luci-app-dockerman 的 ucode/htdocs 代码里并无任何 compose
+    # 调用，它只是 LUCI_DEPENDS 里顺带声明了这个依赖，摘掉即可。
+    # 放在这里执行的时机是正确的：此时 feeds 已更新，install feeds
+    # 尚未运行，改动会被 install 阶段读取。
+    echo ">>> 摘掉 dockerman 的 docker-compose 依赖"
+    dman="feeds/luci/applications/luci-app-dockerman/Makefile"
+    if [ -f "$dman" ]; then
+        sed -i '/^[[:space:]]*+docker-compose[[:space:]]*\\[[:space:]]*$/d' "$dman"
+        sed -i 's/[[:space:]]*+docker-compose\([[:space:]]*\\\)\?//g' "$dman"
+        echo "    - 已处理 $dman"
+        sed -n '/^LUCI_DEPENDS/,/^$/p' "$dman" | sed 's/^/      /'
+    else
+        echo "    ! 未找到 $dman（可能路径变动），跳过"
+    fi
+
     exit 0
 fi
 
@@ -114,34 +137,6 @@ find package -maxdepth 5 -name Makefile \
     -exec sed -i \
     's|\.\./\.\./lang/golang/golang-package.mk|$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|g' {} \;
 
-# ============================================================
-# 摘掉 luci-app-dockerman 对 docker-compose 的依赖
-# ------------------------------------------------------------
-# 原因：上游 feeds/packages/utils/docker-compose 目前是坏的
-#       （compose v5.5.1 的 go.mod 与 docker/cli@v29.7.2 不兼容，
-#        Go 1.27 下大批依赖包无法解析），编译到最后阶段必然失败：
-#         ERROR: package/feeds/packages/docker-compose failed to build.
-#       而 luci-app-dockerman 的 ucode/htdocs 代码里并没有任何
-#       compose 调用，它只是 LUCI_DEPENDS 里顺带声明了这个依赖。
-# 处理：保留 Docker 引擎（dockerd / docker），仅移除界面里的
-#       compose 依赖，让 dockerman 能正常编译。
-# 注意：feeds/luci 在 "Update feeds" 阶段之后才被 sed，所以这段
-#       放在 install feeds 之后调用（由 workflow 调用带 cleanup 参数
-#       的分支之外单独执行）。这里先做 package/ 下的处理，
-#       feeds/luci 下的处理放在 patch-dockerman 子命令里。
-if [ "${1:-}" = "patch-dockerman" ]; then
-    echo ">>> 摘掉 dockerman 的 docker-compose 依赖"
-    dman="feeds/luci/applications/luci-app-dockerman/Makefile"
-    if [ -f "$dman" ]; then
-        # 删除 LUCI_DEPENDS 中以 +docker-compose 结尾的那一行（含行尾续行符）
-        sed -i '/^[[:space:]]*+docker-compose[[:space:]]*\\[[:space:]]*$/d' "$dman"
-        # 兜底：处理行内不带续行符的写法
-        sed -i 's/[[:space:]]*+docker-compose\([[:space:]]*\\\)\?//g' "$dman"
-        echo "    - 已处理 $dman"
-        echo "    - 当前 LUCI_DEPENDS:"
-        sed -n '/^LUCI_DEPENDS/,/^$/p' "$dman" | sed 's/^/      /'
-    else
-        echo "    ! 未找到 $dman（可能路径变动），跳过" >&2
-    fi
-    exit 0
-fi
+# 说明：摘除 dockerman 对 docker-compose 依赖的逻辑已合并到上面的
+# cleanup 分支中执行（见 "摘掉 dockerman 的 docker-compose 依赖"），
+# 因为那个时机（feeds 已更新、install 尚未运行）才是正确的。
