@@ -41,7 +41,7 @@ env:
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
   CCACHE_DIR: /workdir/.ccache
-  CCACHE_MAXSIZE: 2G
+  CCACHE_MAXSIZE: 10G
   CCACHE_COMPRESS: 1
 
 jobs:
