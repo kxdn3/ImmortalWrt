@@ -2,12 +2,12 @@
 #
 # diy-part1.sh - Before Update feeds
 #
-# 参考 OpenWrt-x86/diy-mini.sh：
-# 第三方仓库如果不是标准 feed（包在子目录），就直接克隆到 package/。
-# 不要写成 src-git，否则 ./scripts/feeds update 会失败：
-#   - xiaorouji/openwrt-passwall 已迁到 Openwrt-Passwall 组织，旧地址 404
-#   - pushbot 仓库根目录就是 Makefile，当 feed 索引会报
-#     "target pattern contains no '%'"
+# 集成方式说明：
+#   * 标准 feed（仓库根目录每个子目录即一个包）用 src-git 添加，
+#     例如 Nikki；这样 ./scripts/feeds update/install 能正确处理。
+#   * 非标准 feed（如 PushBot 仓库根本身就是一个 Makefile）或单包仓库，
+#     直接 git clone 到 package/ 下，不要写成 src-git，否则 feeds update
+#     会报 "target pattern contains no '%'" 之类错误。
 #
 set -e
 
@@ -30,43 +30,9 @@ clone_pkg() {
     return 1
 }
 
-remove_paths() {
-    local p
-    for p in "$@"; do
-        if [ -e "$p" ]; then
-            rm -rf "$p"
-            echo "    - removed $p"
-        fi
-    done
-}
-
-# 在 ./scripts/feeds update -a 之后调用：
-# 删掉 feeds 里与 package/ 第三方包同名的包，再只重建索引（不重新拉取）
+# 在 ./scripts/feeds update -a 之后调用：此时 feeds 已更新、install 尚未
+# 运行，适合对 feed 内容做最后的修补（例如摘除失效依赖）。
 if [ "${1:-}" = "cleanup" ]; then
-    echo ">>> 删除与第三方包冲突的 feed 包"
-    remove_paths \
-        feeds/luci/applications/luci-app-passwall \
-        feeds/packages/net/chinadns-ng \
-        feeds/packages/net/dns2socks \
-        feeds/packages/net/geoview \
-        feeds/packages/net/hysteria \
-        feeds/packages/net/ipt2socks \
-        feeds/packages/net/microsocks \
-        feeds/packages/net/naiveproxy \
-        feeds/packages/net/shadow-tls \
-        feeds/packages/net/shadowsocks-rust \
-        feeds/packages/net/shadowsocksr-libev \
-        feeds/packages/net/simple-obfs \
-        feeds/packages/net/sing-box \
-        feeds/packages/net/tcping \
-        feeds/packages/net/v2ray-geodata \
-        feeds/packages/net/v2ray-plugin \
-        feeds/packages/net/xray-core \
-        feeds/packages/net/xray-plugin
-
-    echo ">>> 重建 feed 索引"
-    ./scripts/feeds update -i
-
     # ------------------------------------------------------------
     # 摘掉 luci-app-dockerman 对 docker-compose 的依赖
     # ------------------------------------------------------------
@@ -89,29 +55,6 @@ if [ "${1:-}" = "cleanup" ]; then
         echo "    ! 未找到 $dman（可能路径变动），跳过"
     fi
 
-    # ------------------------------------------------------------
-    # 移除损坏的 geoview（PassWall 的 geo 数据工具）
-    # ------------------------------------------------------------
-    # geoview 0.2.6（openwrt-passwall-packages 与 feeds/packages
-    # 同为该版本）在 Go 1.27 下依赖解析失败：
-    #   no required module provides package
-    #     github.com/sagernet/sing/common/debug
-    #     github.com/sagernet/sing/common/x/collections
-    #     google.golang.org/protobuf/internal/editiondefaults
-    # 上游自 2026-05-08 起未更新，暂无修复。geoview 仅用于生成
-    # geo 数据，移除后由已编译成功的 v2ray-geodata 顶替，
-    # PassWall 代理功能不受影响。
-    echo ">>> 移除损坏的 geoview（用 v2ray-geodata 顶替）"
-    rm -rf package/openwrt-passwall-packages/geoview
-    pwm="package/luci-app-passwall/luci-app-passwall/Makefile"
-    if [ -f "$pwm" ]; then
-        sed -i '/^[[:space:]]*select PACKAGE_geoview/d' "$pwm"
-        sed -i 's/^\\([[:space:]]*\\)default y if aarch64||arm||i386||x86_64/\\1default n/' "$pwm"
-        echo "    - 已摘除 $pwm 的 geoview 默认勾选"
-    else
-        echo "    ! 未找到 $pwm（可能路径变动），跳过"
-    fi
-
     exit 0
 fi
 
@@ -120,16 +63,14 @@ echo ">>> 添加 Fluent 主题 feed"
 grep -q 'src-git fluent ' feeds.conf.default || \
     echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent.git;main' >> feeds.conf.default
 
-# PassWall
-echo ">>> 添加 PassWall"
-clone_pkg \
-    https://github.com/Openwrt-Passwall/openwrt-passwall-packages \
-    package/openwrt-passwall-packages
-clone_pkg \
-    https://github.com/Openwrt-Passwall/openwrt-passwall \
-    package/luci-app-passwall
+# Nikki：基于 mihomo 的透明代理界面，标准 feed 结构，用 src-git 添加。
+# 仓库自带 mihomo-meta / mihomo-alpha 内核与 geo 处理，不依赖 geoview，
+# 也不依赖 xray/sing-box。选 luci-app-nikki 即自动带入 nikki + mihomo。
+echo ">>> 添加 Nikki feed"
+grep -q 'src-git nikki ' feeds.conf.default || \
+    echo 'src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main' >> feeds.conf.default
 
-# PushBot：仓库本身就是一个包
+# PushBot：仓库本身就是一个包（非标准 feed），直接 clone 到 package/
 echo ">>> 添加 PushBot"
 clone_pkg \
     https://github.com/zzsj0928/luci-app-pushbot \
@@ -159,7 +100,3 @@ find package -maxdepth 5 -name Makefile \
 find package -maxdepth 5 -name Makefile \
     -exec sed -i \
     's|\.\./\.\./lang/golang/golang-package.mk|$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|g' {} \;
-
-# 说明：摘除 dockerman 对 docker-compose 依赖的逻辑已合并到上面的
-# cleanup 分支中执行（见 "摘掉 dockerman 的 docker-compose 依赖"），
-# 因为那个时机（feeds 已更新、install 尚未运行）才是正确的。
