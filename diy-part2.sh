@@ -60,6 +60,7 @@ CONFIG_PACKAGE_luci-theme-fluent=y
 CONFIG_PACKAGE_luci-app-diskman=y
 CONFIG_PACKAGE_luci-app-dockerman=y
 CONFIG_PACKAGE_luci-app-pushbot=y
+CONFIG_PACKAGE_ttyd=y
 CONFIG_PACKAGE_iputils-arping=y
 CONFIG_PACKAGE_jq=y
 
