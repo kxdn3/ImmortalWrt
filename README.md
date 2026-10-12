@@ -20,7 +20,7 @@
 | BIOS Boot Partition | 1024k |
 
 ### 已集成插件
-- **PassWall** (`luci-app-passwall`)
+- **Nikki** (`luci-app-nikki`)
 - **Lucky (sirpdboy 版)** (`luci-app-lucky`)
 - **Fluent 主题** (`luci-theme-fluent`)
 - **DiskMan** (`luci-app-diskman`)
