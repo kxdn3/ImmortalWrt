@@ -31,7 +31,7 @@ permissions:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: openwrt-25.12
+  REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
@@ -208,13 +208,9 @@ jobs:
           echo "仍有非物理机镜像被打开，停止编译"
           exit 1
         fi
-        # Go 模块缓存在 dl/go-mod-cache，里面大量 go.mod 和小 .go 都小于 1KB。
-        # 递归删除小于 1KB 的文件会把它们删掉，docker-compose / geoview 就会报
-        # “no required module provides package”。已有缓存是坏的，先清掉再下载。
-        rm -rf dl/go-mod-cache
         make download -j8
-        # 只清理 dl 根目录里下载失败的空文件，不要递归进 go-mod-cache。
-        find dl -maxdepth 1 -type f -size -1024c -print -delete
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
 
     - name: Compile the firmware
       id: compile
