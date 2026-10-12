@@ -53,7 +53,7 @@ cat >> .config << 'EOF'
 CONFIG_PACKAGE_luci-app-nikki=y
 CONFIG_PACKAGE_nikki=y
 CONFIG_PACKAGE_mihomo-meta=y
-CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-nikki-zh_Hans=y
 CONFIG_PACKAGE_luci-app-lucky=y
 CONFIG_PACKAGE_lucky=y
 CONFIG_PACKAGE_luci-theme-fluent=y
