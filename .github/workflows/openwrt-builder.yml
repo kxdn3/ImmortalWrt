@@ -88,10 +88,11 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /workdir/openwrt/dl
-        key: dl-${{ runner.os }}-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-${{ github.run_id }}
+        # v2：旧缓存里的 go 模块缓存被"清理小文件"误删过源码，前缀必须和旧 key 断开
+        key: dl-${{ runner.os }}-v2-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-${{ github.run_id }}
         restore-keys: |
-          dl-${{ runner.os }}-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-
-          dl-${{ runner.os }}-
+          dl-${{ runner.os }}-v2-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-
+          dl-${{ runner.os }}-v2-
 
     - name: 加载自定义 feeds
       run: |
@@ -144,6 +145,13 @@ jobs:
       id: package
       run: |
         cd openwrt
+        # Go 模块缓存不完整会让 yq / mihomo 等 Go 包编译失败
+        # （典型报错：build constraints exclude all Go files in dl/go-mod-cache/.../go-isatty@v0.0.20）
+        # 旧缓存有可能缺文件，这里强制重新拉取，保证模块目录完整
+        if [ -d dl/go-mod-cache ]; then
+          echo "===== 清空 go 模块缓存，重新下载（旧缓存可能不完整）====="
+          rm -rf dl/go-mod-cache
+        fi
         make defconfig
         echo "===== 镜像相关配置 ====="
         grep -E '^(# )?CONFIG_(GRUB_IMAGES|GRUB_EFI_IMAGES|TARGET_ROOTFS_EXT4FS|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_IMAGES_GZIP|ONIE_INSTALLER_IMAGES)' .config || true
@@ -156,8 +164,12 @@ jobs:
           exit 1
         fi
         make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+        # 只清理顶层"下载失败"的小体积压缩包（出错页面/空包）。
+        # 必须限定 -maxdepth 1：dl/go-mod-cache 里的 .go 源码文件普遍小于 1KB，
+        # 递归删除会把模块缓存打成残废（缺 isatty_linux.go 之类），Go 包直接编译失败。
+        echo "===== 体积异常（<1KB）的顶层下载文件 ====="
+        find dl -maxdepth 1 -type f -size -1024c -exec ls -l {} \;
+        find dl -maxdepth 1 -type f -size -1024c -exec rm -f {} \;
 
     - name: 编译固件
       id: compile
