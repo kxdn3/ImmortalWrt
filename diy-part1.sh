@@ -89,6 +89,29 @@ if [ "${1:-}" = "cleanup" ]; then
         echo "    ! 未找到 $dman（可能路径变动），跳过"
     fi
 
+    # ------------------------------------------------------------
+    # 移除损坏的 geoview（PassWall 的 geo 数据工具）
+    # ------------------------------------------------------------
+    # geoview 0.2.6（openwrt-passwall-packages 与 feeds/packages
+    # 同为该版本）在 Go 1.27 下依赖解析失败：
+    #   no required module provides package
+    #     github.com/sagernet/sing/common/debug
+    #     github.com/sagernet/sing/common/x/collections
+    #     google.golang.org/protobuf/internal/editiondefaults
+    # 上游自 2026-05-08 起未更新，暂无修复。geoview 仅用于生成
+    # geo 数据，移除后由已编译成功的 v2ray-geodata 顶替，
+    # PassWall 代理功能不受影响。
+    echo ">>> 移除损坏的 geoview（用 v2ray-geodata 顶替）"
+    rm -rf package/openwrt-passwall-packages/geoview
+    pwm="package/luci-app-passwall/luci-app-passwall/Makefile"
+    if [ -f "$pwm" ]; then
+        sed -i '/^[[:space:]]*select PACKAGE_geoview/d' "$pwm"
+        sed -i 's/^\\([[:space:]]*\\)default y if aarch64||arm||i386||x86_64/\\1default n/' "$pwm"
+        echo "    - 已摘除 $pwm 的 geoview 默认勾选"
+    else
+        echo "    ! 未找到 $pwm（可能路径变动），跳过"
+    fi
+
     exit 0
 fi
 
