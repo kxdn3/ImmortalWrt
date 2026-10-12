@@ -70,6 +70,13 @@ echo ">>> 添加 Nikki feed"
 grep -q 'src-git nikki ' feeds.conf.default || \
     echo 'src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main' >> feeds.conf.default
 
+# luci-app-ttyd-strict：LuCI2 界面的 ttyd（带 zh_Hans 翻译、rpcd 后端），
+# 只做界面层，不带 init/UCI 文件，不跟官方 ttyd 包冲突。
+echo ">>> 添加 luci-app-ttyd-strict"
+clone_pkg \
+    https://github.com/rabbitrogi/luci-app-ttyd-strict \
+    package/luci-app-ttyd-strict
+
 # PushBot：仓库本身就是一个包（非标准 feed），直接 clone 到 package/
 echo ">>> 添加 PushBot"
 clone_pkg \
