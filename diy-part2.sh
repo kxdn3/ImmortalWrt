@@ -61,6 +61,8 @@ CONFIG_PACKAGE_luci-app-diskman=y
 CONFIG_PACKAGE_luci-app-dockerman=y
 CONFIG_PACKAGE_luci-app-pushbot=y
 CONFIG_PACKAGE_ttyd=y
+CONFIG_PACKAGE_luci-app-ttyd-strict=y
+CONFIG_PACKAGE_luci-i18n-ttyd-strict-zh_Hans=y
 CONFIG_PACKAGE_iputils-arping=y
 CONFIG_PACKAGE_jq=y
 
