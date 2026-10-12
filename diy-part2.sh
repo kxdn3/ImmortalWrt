@@ -13,8 +13,8 @@
 # 修改默认 IP 为 10.0.0.1
 sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
-# 默认主题改为 Fluent（如果编译了该主题）
-# sed -i 's/luci-theme-bootstrap/luci-theme-fluent/g' feeds/luci/collections/luci/Makefile
+# 默认主题改为 Argon（官方 feed 已有该包，无需第三方源；fluent 仍保留可随时切回）
+sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
 
 # 修改主机名（可选）
 # sed -i 's/ImmortalWrt/MyRouter/g' package/base-files/files/bin/config_generate
@@ -57,6 +57,7 @@ CONFIG_PACKAGE_luci-i18n-nikki-zh_Hans=y
 CONFIG_PACKAGE_luci-app-lucky=y
 CONFIG_PACKAGE_lucky=y
 CONFIG_PACKAGE_luci-theme-fluent=y
+CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci-app-diskman=y
 CONFIG_PACKAGE_luci-app-dockerman=y
 CONFIG_PACKAGE_luci-app-pushbot=y
