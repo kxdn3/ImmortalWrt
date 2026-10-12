@@ -67,7 +67,6 @@ CONFIG_PACKAGE_zsh-completions=y
 # 常用依赖/辅助
 CONFIG_PACKAGE_docker=y
 CONFIG_PACKAGE_dockerd=y
-CONFIG_PACKAGE_luci-lib-docker=y
 CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_e2fsprogs=y
 CONFIG_PACKAGE_fdisk=y
