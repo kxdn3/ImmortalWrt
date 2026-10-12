@@ -45,14 +45,14 @@ env:
   CCACHE_COMPRESS: 1
 
 jobs:
-  build:
+  编译:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
+    - name: 检出源码
       uses: actions/checkout@main
 
-    - name: Initialization environment
+    - name: 初始化环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -67,14 +67,14 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
         mkdir -p "$CCACHE_DIR"
 
-    - name: Clone source code
+    - name: 克隆源码
       working-directory: /workdir
       run: |
         df -hT $PWD
         git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: Cache ccache
+    - name: 缓存 ccache
       uses: actions/cache@v4
       with:
         path: /workdir/.ccache
@@ -83,7 +83,7 @@ jobs:
           ccache-${{ runner.os }}-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-
           ccache-${{ runner.os }}-
 
-    - name: Cache downloads (dl)
+    - name: 缓存下载目录 (dl)
       uses: actions/cache@v4
       with:
         path: /workdir/openwrt/dl
@@ -92,24 +92,24 @@ jobs:
           dl-${{ runner.os }}-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-
           dl-${{ runner.os }}-
 
-    - name: Load custom feeds
+    - name: 加载自定义 feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
-    - name: Update feeds
+    - name: 更新 feeds
       run: |
         cd openwrt
         ./scripts/feeds update -a
         # 删掉与 package/ 里第三方包同名的 feed 包，并重建索引
         $GITHUB_WORKSPACE/$DIY_P1_SH cleanup
 
-    - name: Install feeds
+    - name: 安装 feeds
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Load custom configuration
+    - name: 加载自定义配置
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
@@ -139,7 +139,7 @@ jobs:
         # CONFIG_ONIE_INSTALLER_IMAGES is not set
         EOF
 
-    - name: Download package
+    - name: 下载依赖包
       id: package
       run: |
         cd openwrt
@@ -158,7 +158,7 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile the firmware
+    - name: 编译固件
       id: compile
       run: |
         cd openwrt
@@ -171,18 +171,18 @@ jobs:
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: Check space usage
+    - name: 检查磁盘空间
       if: (!cancelled())
       run: df -hT
 
-    - name: Upload bin directory
+    - name: 上传 bin 目录
       uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
 
-    - name: Organize files
+    - name: 整理固件文件
       id: organize
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
@@ -222,14 +222,14 @@ jobs:
         echo "FIRMWARE=$dst" >> "$GITHUB_ENV"
         echo "status=success" >> "$GITHUB_OUTPUT"
 
-    - name: Upload firmware directory
+    - name: 上传固件目录
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
-    - name: Generate release tag
+    - name: 生成 Release 标签
       id: tag
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
@@ -247,7 +247,7 @@ jobs:
         EOF
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware to release
+    - name: 上传固件到 Release
       uses: softprops/action-gh-release@master
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
@@ -257,13 +257,13 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
 
-    - name: Delete workflow runs
+    - name: 清理旧编译记录
       uses: Mattraks/delete-workflow-runs@main
       with:
         retain_days: 0
         keep_minimum_runs: 10
 
-    - name: Remove old Releases
+    - name: 清理旧 Release
       uses: dev-drprasad/delete-older-releases@master
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
