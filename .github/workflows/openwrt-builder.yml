@@ -120,6 +120,10 @@ jobs:
         $GITHUB_WORKSPACE/$DIY_P2_SH
         # 启用 ccache 加速编译
         echo "CONFIG_CCACHE=y" >> .config
+        # 让 OpenWrt 把 ccache 缓存写到 workflow 缓存的目录。
+        # 否则 rules.mk 默认写 $(TOPDIR)/.ccache（openwrt/.ccache），与 cache action
+        # 缓存的 /workdir/.ccache 路径错位，导致缓存永远是空的、跨 run 无法命中。
+        echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
         # 再写一次，确保即使 .config / diy 被改过，也不会编出虚拟机镜像
         cat >> .config << 'EOF'
 
