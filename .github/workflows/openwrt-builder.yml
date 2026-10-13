@@ -46,6 +46,8 @@ env:
   # 路径归一化：避免绝对路径(/workdir/openwrt/...)和 CWD 进入哈希，跨 runner 复用缓存
   CCACHE_NOHASHDIR: 1
   CCACHE_BASEDIR: /workdir
+  # 放宽哈希严格度：忽略 __DATE__/__FILE__/文件 mtime 导致的假失配，滚动更新时缓存更有用
+  CCACHE_SLOPPINESS: time_macros,file_macro,include_file_mtime
 
 jobs:
   build:
