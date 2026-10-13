@@ -55,6 +55,22 @@ if [ "${1:-}" = "cleanup" ]; then
         echo "    ! 未找到 $dman（可能路径变动），跳过"
     fi
 
+    # ------------------------------------------------------------
+    # 删掉官方 feed 里的 luci-theme-argon，改用作者源（jerrykuku）
+    # ------------------------------------------------------------
+    # 上面已把 jerrykuku 的 argon clone 到 package/luci-theme-argon，
+    # 这里把 feeds/luci/themes/luci-theme-argon 删掉，否则 feeds install 时
+    # 会和作者源出现同名包（luci-theme-argon）冲突 / 互相覆盖。
+    # 注意：必须在 feeds update 之后、feeds install 之前执行（本 cleanup 模式即此时机）。
+    echo ">>> 移除官方 luci-theme-argon（改作者源）"
+    off_argon="feeds/luci/themes/luci-theme-argon"
+    if [ -d "$off_argon" ]; then
+        rm -rf "$off_argon"
+        echo "    - 已移除 $off_argon"
+    else
+        echo "    ! 未找到 $off_argon（可能路径变动），跳过"
+    fi
+
     exit 0
 fi
 
@@ -62,6 +78,15 @@ fi
 echo ">>> 添加 Fluent 主题 feed"
 grep -q 'src-git fluent ' feeds.conf.default || \
     echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent.git;main' >> feeds.conf.default
+
+# Argon 用作者源（jerrykuku/luci-theme-argon），不要用 ImmortalWrt 官方 feed。
+# 作者源版本 2.4.8（beta.1，2026-10-09 发布，仍在持续更新），官方 feed 停在 2.4.7（2026-08-24）。
+# 仓库根目录即 Makefile（单包仓库，已用 $(TOPDIR)/feeds/luci/luci.mk 绝对路径），直接 clone 到
+# package/；同时在 cleanup 阶段删掉官方 feed 里的同名包，避免重复/冲突。
+echo ">>> 添加 Argon 主题（作者源 jerrykuku）"
+clone_pkg \
+    https://github.com/jerrykuku/luci-theme-argon \
+    package/luci-theme-argon
 
 # Nikki：基于 mihomo 的透明代理界面，标准 feed 结构，用 src-git 添加。
 # 仓库自带 mihomo-meta / mihomo-alpha 内核与 geo 处理，不依赖 geoview，
