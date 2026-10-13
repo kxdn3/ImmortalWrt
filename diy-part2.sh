@@ -13,7 +13,8 @@
 # 修改默认 IP 为 10.0.0.1
 sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
-# 默认主题改为 Argon（官方 feed 已有该包，无需第三方源；fluent 仍保留可随时切回）
+# 默认主题改为 Argon（使用作者源 jerrykuku/luci-theme-argon 2.4.8，
+# 已在 diy-part1.sh 中 clone 并移除官方 feed 同名包；fluent 仍保留可随时切回）
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
 
 # 修改主机名（可选）
