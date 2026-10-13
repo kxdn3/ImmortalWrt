@@ -79,6 +79,13 @@ CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_e2fsprogs=y
 CONFIG_PACKAGE_fdisk=y
 CONFIG_PACKAGE_parted=y
+
+# === SMB4 文件共享（用户要求，带中文界面 + Windows 网络发现）===
+CONFIG_PACKAGE_luci-app-samba4=y
+CONFIG_PACKAGE_samba4-server=y
+CONFIG_PACKAGE_wsdd2=y
+CONFIG_PACKAGE_luci-i18n-samba4-zh_Hans=y
+CONFIG_PACKAGE_autosamba=y
 EOF
 
 # ==========
