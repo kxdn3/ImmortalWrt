@@ -157,6 +157,11 @@ jobs:
           rm -rf dl/go-mod-cache
         fi
         make defconfig
+        # immortalwrt/master 的 CONFIG_CCACHE 定义在 Config-devel.in（依赖 DEVEL），
+        # make defconfig 会因依赖不满足把它丢弃，导致 ccache 全程不生效（0 命中、存 218B 空包）。
+        # 必须在 defconfig 之后重新写入；后续 make 直接读 .config，不再跑 defconfig，故能真正挂上 ccache。
+        echo "CONFIG_CCACHE=y" >> .config
+        echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
         echo "===== 镜像相关配置 ====="
         grep -E '^(# )?CONFIG_(GRUB_IMAGES|GRUB_EFI_IMAGES|TARGET_ROOTFS_EXT4FS|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_IMAGES_GZIP|ONIE_INSTALLER_IMAGES)' .config || true
         grep -q '^CONFIG_GRUB_EFI_IMAGES=y' .config
