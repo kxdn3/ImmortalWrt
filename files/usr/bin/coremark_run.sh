@@ -9,6 +9,8 @@
 SCORE=$(grep -m1 -E "^CoreMark [0-9]" /tmp/coremark.log | awk '{print $4}')
 
 if [ -n "$SCORE" ]; then
+    # 注意：本固件的 uci 不会自动创建新配置文件，先建空文件再 set
+    [ -f /etc/config/coremark ] || : > /etc/config/coremark
     uci -q delete coremark.result
     uci set coremark.result=coremark
     uci set coremark.result.score="$SCORE"
