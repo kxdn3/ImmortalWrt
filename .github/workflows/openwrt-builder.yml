@@ -275,14 +275,23 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件到 Release
-      uses: softprops/action-gh-release@master
+      # 原 softprops/action-gh-release@master 发布时偶发 HttpError（其按分支 ref 查 release 的 bug），
+      # 且 @master 为浮动引用、不稳定。改用内置 gh CLI 创建 Release 并上传固件（runner 自带、走 node24）。
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        TAG="${{ steps.tag.outputs.release_tag }}"
+        # 同 tag 已存在（重复运行）先删后建，避免冲突
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          gh release delete "$TAG" --yes --delete-tag || true
+        fi
+        gh release create "$TAG" \
+          --title "$TAG" \
+          --notes-file release.txt \
+          "$FIRMWARE"/*
 
     - name: 清理旧编译记录
       uses: Mattraks/delete-workflow-runs@main
