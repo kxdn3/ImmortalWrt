@@ -1,0 +1,25 @@
+#!/bin/sh
+# 首次开机执行一次：初始化 CoreMark 凌晨 5 点一次性跑分任务
+#   1. 系统时区若为默认 UTC，改为北京时间（保证「凌晨 5 点」是本地时间）
+#   2. 初始化 /etc/config/coremark（LuCI Overview widget 数据源）
+#   3. 启用 micrond 定时守护进程（条目已预置在 /usr/lib/micron.d/coremark）
+
+# 1) 时区：仅当还是出厂默认 UTC 时才设，尊重用户已改过的时区
+if [ "$(uci -q get system.@system[0].zonename)" = "UTC" ]; then
+    uci set system.@system[0].zonename='Asia/Shanghai'
+    uci set system.@system[0].timezone='CST-8'
+    uci commit system
+fi
+
+# 2) 初始化跑分配置（空分数，widget 显示「等待 05:00 执行」）
+uci -q delete coremark.result
+uci set coremark.result=coremark
+uci set coremark.result.score=''
+uci set coremark.result.timestamp=''
+uci commit coremark
+
+# 3) 启用并启动 micrond
+/etc/init.d/micrond enable
+/etc/init.d/micrond start
+
+exit 0
