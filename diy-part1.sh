@@ -74,10 +74,9 @@ if [ "${1:-}" = "cleanup" ]; then
     exit 0
 fi
 
-# Fluent 是标准 feed（包在 package/ 子目录），可以 src-git
-echo ">>> 添加 Fluent 主题 feed"
-grep -q 'src-git fluent ' feeds.conf.default || \
-    echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent.git;main' >> feeds.conf.default
+# Fluent 主题已移除（默认主题为 argon，无需第二个主题以缩小体积）
+# 如需启用，取消下一行注释：
+# echo 'src-git fluent https://github.com/LazuliKao/luci-theme-fluent.git;main' >> feeds.conf.default
 
 # Argon 用作者源（jerrykuku/luci-theme-argon），不要用 ImmortalWrt 官方 feed。
 # 作者源版本 2.4.8（beta.1，2026-10-09 发布，仍在持续更新），官方 feed 停在 2.4.7（2026-08-24）。
