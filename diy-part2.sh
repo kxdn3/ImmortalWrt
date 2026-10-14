@@ -57,7 +57,7 @@ CONFIG_PACKAGE_mihomo-meta=y
 CONFIG_PACKAGE_luci-i18n-nikki-zh_Hans=y
 CONFIG_PACKAGE_luci-app-lucky=y
 CONFIG_PACKAGE_lucky=y
-CONFIG_PACKAGE_luci-theme-fluent=y
+# CONFIG_PACKAGE_luci-theme-fluent is not set  # 默认主题为 argon
 CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci-app-diskman=y
 CONFIG_PACKAGE_luci-app-dockerman=y
@@ -70,7 +70,7 @@ CONFIG_PACKAGE_jq=y
 
 # zsh 相关
 CONFIG_PACKAGE_zsh=y
-CONFIG_PACKAGE_zsh-completions=y
+# CONFIG_PACKAGE_zsh-completions is not set  # 补全非必需
 
 # 常用依赖/辅助
 CONFIG_PACKAGE_docker=y
