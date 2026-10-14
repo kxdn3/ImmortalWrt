@@ -1,0 +1,34 @@
+#!/bin/sh
+# 首次开机执行一次：让局域网(10.0.0.x)访问桥接光猫管理页
+# 兼容光猫管理 IP 为 192.168.0.1 或 192.168.1.1 两种常见默认地址
+# 执行后本文件自动删除；配置已 commit，重启/升级/恢复出厂均不丢
+
+WAN_DEV=$(uci -q get network.wan.device)
+[ -z "$WAN_DEV" ] && WAN_DEV="eth1"
+
+# 1) 在 WAN 物理口上挂两个光猫常见网段的静态 IP（与 PPPoE 拨号共存，互不影响）
+for seg in 0 1; do
+    uci -q delete network.modem$seg
+    uci set network.modem$seg=interface
+    uci set network.modem$seg.proto='static'
+    uci set network.modem$seg.device="$WAN_DEV"
+    uci set network.modem$seg.ipaddr="192.168.$seg.2"
+    uci set network.modem$seg.netmask='255.255.255.0'
+done
+uci commit network
+
+# 2) 两个接口都并入 wan 防火墙区 -> 自动获得 lan->wan 转发放行 + 出口 NAT
+ZONE=$(uci show firewall | grep "name='wan'" | cut -d. -f2)
+if [ -n "$ZONE" ]; then
+    for seg in 0 1; do
+        uci -q del_list firewall.$ZONE.network="modem$seg"
+        uci add_list firewall.$ZONE.network="modem$seg"
+    done
+    uci commit firewall
+fi
+
+# 3) 立即生效（boot 早期网络服务通常未起，reload 等于启动，无副作用）
+/etc/init.d/network reload
+/etc/init.d/firewall reload
+
+exit 0
