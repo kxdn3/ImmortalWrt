@@ -81,7 +81,7 @@ jobs:
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: 缓存 ccache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: /workdir/.ccache
         key: ccache-${{ runner.os }}-${{ hashFiles('diy-part1.sh', 'diy-part2.sh', '.config') }}-${{ github.run_id }}
@@ -90,7 +90,7 @@ jobs:
           ccache-${{ runner.os }}-
 
     - name: 缓存下载目录 (dl)
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: /workdir/openwrt/dl
         # v2：旧缓存里的 go 模块缓存被"清理小文件"误删过源码，前缀必须和旧 key 断开
@@ -291,10 +291,31 @@ jobs:
         keep_minimum_runs: 10
 
     - name: 清理旧 Release
-      uses: dev-drprasad/delete-older-releases@master
+      # 原 dev-drprasad/delete-older-releases@master 仍声明 node20，会触发
+      # "Node.js 20 is deprecated" 告警；上游未升级且无 release tag。
+      # 改用内置 gh CLI 直接删除（runner 已预装、默认走 node24，且不再依赖第三方 action）。
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 10
-        delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+        KEEP=10
+        # 按创建时间倒序列出 release，保留最新 KEEP 个，删除其余（含对应 git tag）
+        mapfile -t TAGS < <(gh release list --limit 100 --json tagName,createdAt \
+          --jq 'sort_by(.createdAt) | reverse | .[].tagName')
+        total=${#TAGS[@]}
+        echo "当前 Release 数量: $total，保留最新 $KEEP 个"
+        if [ "$total" -le "$KEEP" ]; then
+          echo "无需清理"
+          exit 0
+        fi
+        idx=$KEEP
+        while [ "$idx" -lt "$total" ]; do
+          tag="${TAGS[$idx]}"
+          echo "删除 Release: $tag"
+          gh release delete "$tag" --yes || echo "  release 删除失败，跳过"
+          echo "删除 tag: $tag"
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag" \
+            || echo "  tag 删除失败，跳过"
+          idx=$((idx + 1))
+        done
