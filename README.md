@@ -47,10 +47,6 @@
 - **型号**：LuCI 状态页「型号」显示为「畅网P2」（覆盖 DMI 探测结果；不动机型标识 board_name，不影响 sysupgrade）
 - **CPU / 网络调优**（`/etc/rc.local`，面向 J4125 等入门级 x86）：调频固定为 `performance`；物理网卡的队列中断轮询分到 4 个核；开启 RPS/RFS 让多核参与收包与转发（注意：单条 PPPoE 会话是单队列，吃不到多核）
 
-**内核启动参数**（编译期烘焙进镜像的 grub.cfg，重刷不丢）：
-
-- `pcie_aspm=off`：关闭 PCIe ASPM 省电，规避 Intel i225/i226 2.5G 网卡的已知掉速/断流问题
-
 **定时任务**（micrond）：
 
 - **磁盘 TRIM**：每周日凌晨 6:00 对支持 discard 的文件系统执行 `fstrim -a`（结果写入系统日志，`logread | grep fstrim` 可查）
