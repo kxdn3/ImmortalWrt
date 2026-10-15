@@ -112,6 +112,27 @@ if grep -q 'INSTALL_BIN) \./coremark ' "$CM_MK"; then
 fi
 echo ">>> 已移除 coremark 包自带的 4:00 定时任务（避免与 5:00 一次性任务重复跑分）"
 
+# ========== 主页「本地时间」去掉时区后缀（如 GMT+8）==========
+# LuCI 状态页用 Intl.DateTimeFormat 渲染本地时间，timeStyle 取 'long'/'full' 时
+# 会带上时区名（中文环境下 Asia/Shanghai 被渲染成 "GMT+8"），显示为：
+#   "2026年10月15日 GMT+8 08:29:05"
+# 改为 'medium' 后去掉时区名，只留日期+时分秒：
+#   "2026年10月15日 08:29:05"
+# 该文件由 luci-mod-status 包安装（构建时会被压缩），改 feed 源码即可让补丁随包进固件。
+SYSJS=feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
+if [ -f "$SYSJS" ]; then
+    sed -i "s/timeStyle: *(ts *== *0) *? *'long' *: *'full'/timeStyle: 'medium'/" "$SYSJS"
+    if grep -q "timeStyle: 'medium'" "$SYSJS"; then
+        echo ">>> 已去掉主页本地时间的时区后缀（GMT+8）"
+    else
+        echo "!! 10_system.js 补丁未生效（上游代码可能变动），请检查：$SYSJS" >&2
+        exit 1
+    fi
+else
+    echo "!! 未找到 $SYSJS，无法去掉本地时间的时区后缀" >&2
+    exit 1
+fi
+
 # ==========
 # 只保留 x86 物理机刷机包。追加在最后，覆盖前面可能打开的虚拟机镜像。
 # ==========
