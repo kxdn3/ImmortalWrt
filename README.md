@@ -1,10 +1,12 @@
 # ImmortalWrt云编译
 
+> **【个人定制固件 · 只支持 Intel 网卡】**
+>
+> **本固件为个人定制，非通用发行版。已移除 Realtek 网卡驱动以精简体积，只支持 Intel 网卡（虚拟机 virtio 同样适用）。Realtek 网口的主板请勿刷入。**
+
 使用 GitHub Actions 云编译 **ImmortalWrt** 固件。
 
 基于 [P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt) 模板。
-
-> **个人定制固件**，非通用发行版：已移除 Realtek 网卡驱动以精简体积，**只支持 Intel 网卡**（虚拟机 virtio 同样适用）。Realtek 网口的主板请勿刷入。
 
 ## 当前配置
 
