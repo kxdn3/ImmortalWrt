@@ -1,6 +1,0 @@
-#!/bin/sh
-# 首次开机执行一次：设置主机名为「畅网P2」
-# 注：boot 早期 system 服务尚未启动，commit 后由 boot 流程自然生效，无需 reload
-uci set system.@system[0].hostname='畅网P2'
-uci commit system
-exit 0

@@ -1,0 +1,18 @@
+#!/bin/sh
+# 每次开机把 LuCI 状态页的「型号」覆盖为 畅网P2
+#
+# 原理：LuCI 主页「型号」读的是 /tmp/sysinfo/model，该文件由 /lib/preinit/01_sysinfo
+#       在每次开机时从 DMI 探测生成（/tmp 是 tmpfs，重启即清空，所以不能靠
+#       uci-defaults 一次性脚本实现）。
+#       这里注册一个 preinit_main 钩子，按文件名顺序排在 01_sysinfo 之后执行，
+#       在它探测完之后覆盖结果。
+#
+# 注意：只改 model（纯显示用），不动 /tmp/sysinfo/board_name
+#       （board_name 参与 sysupgrade/board.d 的机型识别，改了有风险）。
+
+do_custom_model() {
+	mkdir -p /tmp/sysinfo
+	echo "畅网P2" > /tmp/sysinfo/model
+}
+
+boot_hook_add preinit_main do_custom_model
