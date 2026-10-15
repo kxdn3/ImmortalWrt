@@ -183,6 +183,10 @@ CONFIG_TARGET_ROOTFS_SQUASHFS=y
 CONFIG_TARGET_IMAGES_GZIP=y
 CONFIG_GRUB_IMAGES=y
 CONFIG_GRUB_EFI_IMAGES=y
+# 内核启动参数（烘焙进 grub.cfg，重刷不丢）：关闭 PCIe ASPM 省电，
+# 规避 Intel i225/i226 2.5G 网卡的已知 ASPM 掉速/断流问题。
+# 对应 target/linux/x86/image/Makefile 里的 BOOTOPTS := $(CONFIG_GRUB_BOOTOPTS)
+CONFIG_GRUB_BOOTOPTS="pcie_aspm=off"
 # CONFIG_TARGET_ROOTFS_TARGZ is not set
 # CONFIG_ISO_IMAGES is not set
 # CONFIG_QCOW2_IMAGES is not set

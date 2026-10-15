@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# 入门级 x86 软路由（J4125 等 Gemini Lake / Goldmont Plus）性能调优
+# 本文件由固件预置（仓库 files/etc/rc.local），每次开机由 /etc/init.d/done（S95done）调用。
+# 改参数直接编辑本文件，重启生效。
+#
+# 两点说明（避免误解）：
+#   * CPU 满载时 performance 与 ondemand 都是最高频，所以本脚本【不提升满载性能】。
+#     governor 的价值是消除突发流量下的升频延迟（代理 / 游戏首包更稳），代价是空闲温度略升。
+#     想省电把 GOV 改回 ondemand 即可。
+#   * 中断亲和 + RPS/RFS 让 4 个核都参与收包与转发；但单条 PPPoE 会话是单队列、
+#     pppd 单线程，PPPoE 转发吃不到多核 —— 这里主要提升 LAN 侧转发与代理流量。
+
+GOV=performance          # 调频策略：performance / ondemand
+RPS_MASK=f               # RPS 掩码：0xf = 4 个核全部参与
+RFS_SOCK_FLOW=32768      # RFS 全局流表项
+RFS_FLOW_CNT=2048        # RFS 每队列流表项
+BACKLOG=2048             # 网卡软中断积压上限
+
+# --- 1) 调频策略 ---
+for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    [ -w "$g" ] && echo "$GOV" > "$g"
+done
+
+# --- 2) 网卡中断亲和：把物理网卡的队列中断轮流分到 4 个核 ---
+i=0
+for irq in $(awk '/eth[0-9]/{sub(/:/, "", $1); print $1}' /proc/interrupts); do
+    case $((i % 4)) in
+        0) mask=1 ;;
+        1) mask=2 ;;
+        2) mask=4 ;;
+        3) mask=8 ;;
+    esac
+    echo "$mask" > /proc/irq/$irq/smp_affinity 2>/dev/null
+    i=$((i + 1))
+done
+
+# --- 3) RPS / RFS：只处理物理网卡（有 device 链接），跳过 br-lan / pppoe-wan 等虚拟接口 ---
+for dev in /sys/class/net/*; do
+    [ -e "$dev/device" ] || continue
+    for q in "$dev"/queues/rx-*/rps_cpus; do
+        [ -w "$q" ] && echo "$RPS_MASK" > "$q"
+    done
+    for q in "$dev"/queues/rx-*/rps_flow_cnt; do
+        [ -w "$q" ] && echo "$RFS_FLOW_CNT" > "$q"
+    done
+done
+
+[ -w /proc/sys/net/core/rps_sock_flow_entries ] && echo "$RFS_SOCK_FLOW" > /proc/sys/net/core/rps_sock_flow_entries
+[ -w /proc/sys/net/core/netdev_max_backlog ] && echo "$BACKLOG" > /proc/sys/net/core/netdev_max_backlog
+
+exit 0

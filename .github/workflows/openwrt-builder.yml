@@ -190,9 +190,15 @@ jobs:
         echo "CONFIG_CCACHE=y" >> .config
         echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
         echo "===== 镜像相关配置 ====="
-        grep -E '^(# )?CONFIG_(GRUB_IMAGES|GRUB_EFI_IMAGES|TARGET_ROOTFS_EXT4FS|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_IMAGES_GZIP|ONIE_INSTALLER_IMAGES)' .config || true
+        grep -E '^(# )?CONFIG_(GRUB_IMAGES|GRUB_EFI_IMAGES|GRUB_BOOTOPTS|TARGET_ROOTFS_EXT4FS|TARGET_ROOTFS_SQUASHFS|TARGET_ROOTFS_TARGZ|ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_IMAGES_GZIP|ONIE_INSTALLER_IMAGES)' .config || true
         grep -q '^CONFIG_GRUB_EFI_IMAGES=y' .config
         grep -q '^CONFIG_GRUB_IMAGES=y' .config
+        # 内核启动参数（pcie_aspm=off）：若被 defconfig 丢弃，grub.cfg 里就不会有，必须中止而不是静默通过
+        if ! grep -q '^CONFIG_GRUB_BOOTOPTS=' .config; then
+          echo "!! CONFIG_GRUB_BOOTOPTS 丢失（被 make defconfig 丢弃），内核参数不会写进 grub.cfg"
+          echo "!! 请检查 config/Config-images.in 中该符号是否存在、依赖是否满足"
+          exit 1
+        fi
         grep -q '^CONFIG_TARGET_ROOTFS_EXT4FS=y' .config
         grep -q '^CONFIG_TARGET_ROOTFS_SQUASHFS=y' .config
         if grep -qE '^CONFIG_(ISO_IMAGES|QCOW2_IMAGES|VDI_IMAGES|VMDK_IMAGES|VHDX_IMAGES|TARGET_ROOTFS_TARGZ|ONIE_INSTALLER_IMAGES)=y' .config; then
