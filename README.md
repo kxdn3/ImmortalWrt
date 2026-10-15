@@ -4,12 +4,15 @@
 
 基于 [P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt) 模板。
 
+> **个人定制固件**，非通用发行版：已移除 Realtek 网卡驱动以精简体积，**只支持 Intel 网卡**（虚拟机 virtio 同样适用）。Realtek 网口的主板请勿刷入。
+
 ## 当前配置
 
 | 项目 | 内容 |
 |------|------|
 | 源码 | [immortalwrt/immortalwrt](https://github.com/immortalwrt/immortalwrt) `master` |
 | 目标 | **x86_64 物理机**（Generic） |
+| 网卡支持 | **仅 Intel**（Realtek 驱动已移除） |
 | 刷机包 | ext4 / squashfs 各两份：`combined-efi`（UEFI）和 `combined`（纯 BIOS） |
 | 不会产出 | ISO、rootfs.tar.gz、单独的 rootfs.img、VMDK、VDI、VHDX、QCOW2 |
 | 默认 IP | **10.0.0.1** |
