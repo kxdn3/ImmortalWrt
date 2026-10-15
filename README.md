@@ -1,6 +1,6 @@
 # ImmortalWrt云编译
 
-![个人定制固件 · 只支持 Intel 网卡](docs/notice-banner.png)
+![私人订制固件 · 只支持 Intel 网卡](docs/notice-banner-v3.png)
 
 使用 GitHub Actions 云编译 **ImmortalWrt** 固件。
 
