@@ -20,7 +20,7 @@
 | 默认 Shell | **zsh** |
 | Kernel 分区 | 16 MiB |
 | RootFS 分区 | 2048 MiB (2GB) |
-| BIOS Boot Partition | 1024k |
+| 分区对齐 (ALIGN) | 1024k（避免 gdisk 对齐告警） |
 
 ## 已集成插件
 
