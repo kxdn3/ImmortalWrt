@@ -162,11 +162,28 @@ jobs:
           rm -rf dl/go-mod-cache
         fi
         make defconfig
-        # 去除 Realtek(螃蟹)网卡驱动：本机为 Intel 2.5G，不需要 r81xx，节省编译时间
-        # （这些是 x86 profile 的 DEVICE_PACKAGES 强制包，defconfig 会选回，故在 defconfig 之后反选）
-        for pkg in r8101 r8125 r8126 r8152 r8168; do
+        # 去除 Realtek(螃蟹)网卡驱动：本机为 Intel 2.5G，不需要 Realtek，节省编译时间与体积
+        # 关键点：
+        #   1. 这些是 KernelPackage 定义的 kmod，配置符号是 CONFIG_PACKAGE_kmod-<包名>，
+        #      早先写成 CONFIG_PACKAGE_<目录名> 完全匹配不上，整个反选是空操作（已实测确认）。
+        #   2. 包名不等于目录名：package/kernel/r8152 的包名是 kmod-usb-net-rtl8152-vendor。
+        #   3. 它们是 defconfig 默认选中的 kmod（不是 profile 的 DEVICE_PACKAGES），故必须在
+        #      defconfig 之后反选，后续 make 不会再跑 defconfig，才能生效。
+        # 覆盖固件内实际存在的 8 个 Realtek 模块：
+        #   8139cp / 8139too / r8101 / r8125 / r8126 / r8152 / r8168 / rtl8150
+        # 另附 r8127（目录存在但当前未被选中）与 r8169（内核自带 Realtek 驱动，当前未选中）兜底
+        for pkg in kmod-8139cp kmod-8139too kmod-r8101 kmod-r8125 kmod-r8126 kmod-r8127 \
+                   kmod-r8168 kmod-r8169 kmod-usb-net-rtl8150 kmod-usb-net-rtl8152-vendor; do
           sed -i "s/^CONFIG_PACKAGE_${pkg}=y/# CONFIG_PACKAGE_${pkg} is not set/" .config
         done
+        # 复核：若仍有 Realtek 驱动被选中就终止编译（防止符号名再次写错却静默通过）
+        RE_REALTEK='^CONFIG_PACKAGE_kmod-(8139cp|8139too|r8101|r8125|r8126|r8127|r8168|r8169|usb-net-rtl8150|usb-net-rtl8152-vendor)=y'
+        if grep -qE "$RE_REALTEK" .config; then
+          echo "!! Realtek 驱动仍被选中，配置符号可能已变更："
+          grep -E "$RE_REALTEK" .config || true
+          exit 1
+        fi
+        echo "OK: .config 中已无 Realtek 网卡驱动"
         # immortalwrt/master 的 CONFIG_CCACHE 定义在 Config-devel.in（依赖 DEVEL），
         # make defconfig 会因依赖不满足把它丢弃，导致 ccache 全程不生效（0 命中、存 218B 空包）。
         # 必须在 defconfig 之后重新写入；后续 make 直接读 .config，不再跑 defconfig，故能真正挂上 ccache。
