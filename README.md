@@ -1,8 +1,8 @@
 # ImmortalWrt云编译
 
-> **【个人定制固件 · 只支持 Intel 网卡】**
+> <font color="red">**【个人定制固件 · 只支持 Intel 网卡】**</font>
 >
-> **本固件为个人定制，非通用发行版。已移除 Realtek 网卡驱动以精简体积，只支持 Intel 网卡（虚拟机 virtio 同样适用）。Realtek 网口的主板请勿刷入。**
+> <font color="red">**本固件为个人定制，非通用发行版。已移除 Realtek 网卡驱动以精简体积，只支持 Intel 网卡（虚拟机 virtio 同样适用）。Realtek 网口的主板请勿刷入。**</font>
 
 使用 GitHub Actions 云编译 **ImmortalWrt** 固件。
 
@@ -14,7 +14,7 @@
 |------|------|
 | 源码 | [immortalwrt/immortalwrt](https://github.com/immortalwrt/immortalwrt) `master` |
 | 目标 | **x86_64 物理机**（Generic） |
-| 网卡支持 | **仅 Intel**（Realtek 驱动已移除） |
+| 网卡支持 | <font color="red">**仅 Intel**</font>（Realtek 驱动已移除） |
 | 刷机包 | ext4 / squashfs 各两份：`combined-efi`（UEFI）和 `combined`（纯 BIOS） |
 | 不会产出 | ISO、rootfs.tar.gz、单独的 rootfs.img、VMDK、VDI、VHDX、QCOW2 |
 | 默认 IP | **10.0.0.1** |
