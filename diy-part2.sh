@@ -112,25 +112,61 @@ if grep -q 'INSTALL_BIN) \./coremark ' "$CM_MK"; then
 fi
 echo ">>> 已移除 coremark 包自带的 4:00 定时任务（避免与 5:00 一次性任务重复跑分）"
 
-# ========== 主页「本地时间」去掉时区后缀（如 GMT+8）==========
-# LuCI 状态页用 Intl.DateTimeFormat 渲染本地时间，timeStyle 取 'long'/'full' 时
-# 会带上时区名（中文环境下 Asia/Shanghai 被渲染成 "GMT+8"），显示为：
-#   "2026年10月15日 GMT+8 08:29:05"
-# 改为 'medium' 后去掉时区名，只留日期+时分秒：
-#   "2026年10月15日 08:29:05"
-# 该文件由 luci-mod-status 包安装（构建时会被压缩），改 feed 源码即可让补丁随包进固件。
-SYSJS=feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
-if [ -f "$SYSJS" ]; then
-    sed -i "s/timeStyle: *(ts *== *0) *? *'long' *: *'full'/timeStyle: 'medium'/" "$SYSJS"
-    if grep -q "timeStyle: 'medium'" "$SYSJS"; then
-        echo ">>> 已去掉主页本地时间的时区后缀（GMT+8）"
+# ========== 状态页「本地时间」：加星期几 + 默认去掉时区后缀（GMT+8）==========
+# 上游用 Intl.DateTimeFormat(undefined, {dateStyle, timeStyle, hourCycle, timeZone}) 渲染：
+#   dateStyle: 'medium'                → "2026年10月15日"
+#   timeStyle: (ts == 0) ? 'long' : 'full'
+#       ts 是 uci 的 clock_timestyle（界面上那个「完整时区名称」复选框）：
+#         未勾选 → 'long' → 带时区偏移，即 "GMT+8"
+#         勾选   → 'full' → 带完整时区名
+# 改为：
+#   dateStyle: 'full'                  → "2026年10月15日星期四"（多出星期几）
+#   timeStyle: (ts == 0) ? 'medium' : 'full'
+#       → 默认（未勾选）不显示任何时区；勾选后仍显示完整时区名（复选框功能保留）
+# 结果：默认 "2026年10月15日星期四 08:29:05"；勾选后 "…星期四 中国标准时间 08:29:05"
+#
+# 注意：dateStyle/timeStyle 与 weekday 等组件选项互斥（同时用会抛 Invalid option），
+# 所以星期几只能靠 dateStyle:'full' 带出，不能另加 weekday。
+#
+# 待改代码同源出现在三个文件，都要改（feed 源码在构建时会被压缩，改源码即可随包进固件）：
+#   1) luci-mod-status  状态 → 概览「本地时间」      （核心）
+#   2) luci-mod-system  系统 → 系统 的本地时间预览   （保持与状态页一致）
+#   3) luci-base 系统日志页的时间戳                  （只去时区，不加星期，避免每行变长）
+patch_localtime() {
+    _f="$1"; _name="$2"
+    if [ ! -f "$_f" ]; then
+        echo "!! 未找到 $_name（$_f），无法修改本地时间显示" >&2
+        exit 1
+    fi
+    sed -i "s/dateStyle: 'medium',/dateStyle: 'full',/" "$_f"
+    sed -i "s/timeStyle: (ts == 0) ? 'long' : 'full',/timeStyle: (ts == 0) ? 'medium' : 'full',/" "$_f"
+    if grep -q "dateStyle: 'full'," "$_f" && grep -q "timeStyle: (ts == 0) ? 'medium' : 'full'," "$_f"; then
+        echo ">>> $_name：已加上星期几，默认不再显示时区后缀"
     else
-        echo "!! 10_system.js 补丁未生效（上游代码可能变动），请检查：$SYSJS" >&2
+        echo "!! $_name 补丁未生效（上游代码可能变动），请检查：$_f" >&2
+        exit 1
+    fi
+}
+
+patch_localtime \
+    feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js \
+    "状态页本地时间"
+patch_localtime \
+    feeds/luci/modules/luci-mod-system/htdocs/luci-static/resources/view/system/system.js \
+    "系统设置页本地时间"
+
+# 系统日志页：同样的格式化代码，只去掉时区后缀，日期保持紧凑（不给每行日志加星期几）
+LOGJS=feeds/luci/modules/luci-base/htdocs/luci-static/resources/tools/views.js
+if [ -f "$LOGJS" ]; then
+    sed -i "s/timeStyle: (ts == 0) ? 'long' : 'full',/timeStyle: (ts == 0) ? 'medium' : 'full',/" "$LOGJS"
+    if grep -q "timeStyle: (ts == 0) ? 'medium' : 'full'," "$LOGJS"; then
+        echo ">>> 系统日志时间戳：已去掉时区后缀（日期保持紧凑，不加星期）"
+    else
+        echo "!! 系统日志时间戳补丁未生效（上游代码可能变动），请检查：$LOGJS" >&2
         exit 1
     fi
 else
-    echo "!! 未找到 $SYSJS，无法去掉本地时间的时区后缀" >&2
-    exit 1
+    echo "!! 未找到 $LOGJS，系统日志时间戳将仍显示时区后缀（继续编译）" >&2
 fi
 
 # ==========
