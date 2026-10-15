@@ -26,10 +26,29 @@ echo "CONFIG_TARGET_KERNEL_PARTSIZE=16" >> .config
 # RootFS 分区 2048 MiB (2GB)
 echo "CONFIG_TARGET_ROOTFS_PARTSIZE=2048" >> .config
 
-# BIOS Boot Partition：源码默认是 256，强制改为 1024（避免 gdisk 警告）
-sed -i 's/\t256$/\t1024/' target/linux/x86/image/Makefile
-# 兼容可能存在的空格写法
-sed -i 's/ 256$/ 1024/' target/linux/x86/image/Makefile
+# ========== 引导区大小 / 分区对齐：256 → 1024（1 MiB）==========
+# target/linux/x86/image/Makefile 里 gen_image_generic.sh 的最后一个参数是 ALIGN，
+# 上游默认 256（KiB）。它同时决定两件事：
+#   1) 分区对齐 —— ptgen -l 决定分区 1 的起始位置：256 → 0.25 MiB，1024 → 1 MiB 边界
+#      （1 MiB 对齐是 SSD/NVMe 最佳实践，gdisk 也不会报对齐告警）
+#   2) GRUB 引导区 —— Build/grub-install 用 grub-bios-setup 把 core.img 嵌进
+#      「MBR 之后、分区 1 之前」的间隙，该间隙大小恰好等于此 ALIGN 值
+# 注意上游该行缩进是两个 Tab（故按 \t 匹配），另保留空格写法兜底。
+ALIGN_MK=target/linux/x86/image/Makefile
+if grep -qE '^[[:space:]]+256$' "$ALIGN_MK"; then
+    sed -i 's/\t256$/\t1024/' "$ALIGN_MK"
+    sed -i 's/ 256$/ 1024/' "$ALIGN_MK"
+elif ! grep -qE '^[[:space:]]+1024$' "$ALIGN_MK"; then
+    # 既不是 256 也不是 1024 → 上游可能改了默认值或改了缩进，必须报错而不是静默放过
+    echo "!! 未找到上游默认的 ALIGN=256（也不是 1024），请检查：$ALIGN_MK" >&2
+    exit 1
+fi
+if grep -qE '^[[:space:]]+1024$' "$ALIGN_MK"; then
+    echo ">>> 引导区 / 分区对齐已设为 1024（1 MiB）"
+else
+    echo "!! ALIGN 替换未生效（分区对齐与 GRUB 引导区大小会回落到上游默认）" >&2
+    exit 1
+fi
 
 # ========== 默认 Shell 改为 zsh ==========
 # 确保编译 zsh 包，并在首次启动时修改 root 的 shell

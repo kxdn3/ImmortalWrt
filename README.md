@@ -20,7 +20,7 @@
 | 默认 Shell | **zsh** |
 | Kernel 分区 | 16 MiB |
 | RootFS 分区 | 2048 MiB (2GB) |
-| 分区对齐 (ALIGN) | 1024k（避免 gdisk 对齐告警） |
+| GRUB 引导区 / 分区对齐 (ALIGN) | 1024k（1 MiB；兼顾 GRUB core.img 嵌入空间与 SSD/NVMe 对齐） |
 
 ## 已集成插件
 
