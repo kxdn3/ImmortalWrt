@@ -1,0 +1,40 @@
+#!/bin/sh
+# PPPoE 场景：移除重复的 wan6（每次开机幂等，在 network 服务启动之前执行）
+#
+# ── 背景 ───────────────────────────────────────────────────────────────
+# wan.proto=pppoe 时，IPv6 由 PPP 会话直接承载（IPv6CP，配合运营商在链路上
+# 下发的 RA，地址 / 前缀 / 默认路由一次带齐）。
+# 而 OpenWrt 的 /bin/config_generate 在 pppoe 分支里还会【再自动生成】一个
+# network.wan6（proto=dhcpv6, device=@wan）。两者叠加会在 pppoe-wan 上产生
+#   * 两个来源的 IPv6 地址
+#   * 两条默认路由
+# 内核做源地址选择时会选到走不通的那条，表现为 DDNS / curl 等 IPv6 出站报
+#   dial tcp [xxx]: connect: no route to host
+#   dial tcp [xxx]: i/o timeout
+# 而 DNS 解析却一切正常（典型的「有解析、无路由」）。
+#
+# ── 做法 ───────────────────────────────────────────────────────────────
+# 挂在 preinit_main 链上（文件名 83_ 排在 82_config_generate 之后）：
+#   * 时机上 network 服务尚未启动，故删除后立即生效，无需 reload network；
+#   * overlay 已由 80_mount_root 挂载，uci 可正常读写与 commit；
+#   * 幂等：仅当 wan 确为 pppoe、且 wan6 恰是自动生成的 dhcpv6@wan 时才删，
+#     不会碰手工配置的其它 wan6；重复执行无副作用。
+#
+# ── 恢复方法 ────────────────────────────────────────────────────────────
+# 若日后运营商改为只走 DHCPv6-PD（PPP 链路上不再有 RA），删掉本文件即可；
+# 或手动加回 wan6 并把 wan.ipv6 置 0，二选一，不要两个都开。
+
+do_wan6_fix() {
+	local p d
+
+	[ "$(uci -q get network.wan.proto)" = "pppoe" ] || return 0
+
+	p=$(uci -q get network.wan6.proto)
+	d=$(uci -q get network.wan6.device)
+	[ "$p" = "dhcpv6" ] && [ "$d" = "@wan" ] || return 0
+
+	uci -q delete network.wan6
+	uci -q commit network
+}
+
+boot_hook_add preinit_main do_wan6_fix
