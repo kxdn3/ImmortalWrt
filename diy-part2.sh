@@ -131,6 +131,41 @@ if grep -q 'INSTALL_BIN) \./coremark ' "$CM_MK"; then
 fi
 echo ">>> 已移除 coremark 包自带的 4:00 定时任务（避免与 5:00 一次性任务重复跑分）"
 
+# ========== miniupnpd 补丁适配上游 2.3.11 ==========
+# 上游 feeds/packages 把 miniupnpd 升到 2.3.11（仅改 Makefile，未刷新补丁集），
+# 导致构建时 020 补丁应用失败（5/7 hunk FAILED）而中止编译。
+# 逐条在真实 2.3.11 源码上试打核实后处理：
+#   010-upnp-igdv2-compat.patch  可正常应用（offset 若干）           → 保留
+#   020-descr-filter-fix.patch   改动已并入上游（patch 报 previously applied）→ 删除
+#   030-allow-private-fix.patch  同上                                → 删除
+#   040-improve-logging.patch    仅 miniupnpd.c 的 help 文本/日志措辞与上游冲突
+#                                （上游自行改写了同样几行），其余 11 个文件的日志
+#                                级别改进仍有效 → 剔除 miniupnpd.c 段落后续用
+#   900-...-format-xml...        可正常应用                          → 保留
+# 参考：官方 openwrt/packages 已整体删除该补丁目录；此处取最小干预，保留仍生效的改动。
+MUP=feeds/packages/net/miniupnpd/patches
+if [ -d "$MUP" ]; then
+    rm -f "$MUP/020-descr-filter-fix.patch" "$MUP/030-allow-private-fix.patch"
+    P040="$MUP/040-improve-logging.patch"
+    if [ -f "$P040" ] && grep -q '^--- a/miniupnpd\.c$' "$P040"; then
+        awk '
+          /^--- a\/miniupnpd\.c$/ { skip = 1; next }
+          /^--- a\//              { skip = 0 }
+          skip != 1               { print }
+        ' "$P040" > "$P040.new" && mv "$P040.new" "$P040"
+        if [ -s "$P040" ] && ! grep -q '^--- a/miniupnpd\.c$' "$P040"; then
+            echo ">>> miniupnpd 补丁已适配 2.3.11（020/030 已合并故删除，040 剔除 miniupnpd.c 段）"
+        else
+            echo "!! miniupnpd 040 补丁裁剪结果异常，请检查：$P040" >&2
+            exit 1
+        fi
+    else
+        echo ">>> miniupnpd 补丁已适配（020/030 已删除；040 无需裁剪或缺失）"
+    fi
+else
+    echo "!! 未找到 $MUP（feeds 结构变动？）" >&2
+fi
+
 # ========== 状态页「本地时间」：加星期几 + 默认去掉时区后缀（GMT+8）==========
 # 上游用 Intl.DateTimeFormat(undefined, {dateStyle, timeStyle, hourCycle, timeZone}) 渲染：
 #   dateStyle: 'medium'                → "2026年10月15日"
