@@ -34,4 +34,13 @@ fi
 # 3) 确保 busybox crond 开机自启（通常固件已默认启用，此处幂等兜底）
 /etc/init.d/cron enable 2>/dev/null
 
+# 4) autocore：只取其 /sbin/cpuinfo（状态页「架构」行显示 CPU 型号/核心/频率/温度），
+#    禁用其 init 服务 —— 该服务会设置 RPS/RFS（rps_sock_flow_entries、rps_flow_cnt）
+#    与网卡 ethtool offload，与固件内置的 packet_steering 互相覆盖，导致
+#    rps_flow_cnt 在 0/4096 之间摇摆。网络调优统一交给 packet_steering，保持单一来源。
+#    （uci-defaults 在 init 服务启动之前执行，故此处禁用后本次开机即不会启动它）
+if [ -x /etc/init.d/autocore ]; then
+    /etc/init.d/autocore disable 2>/dev/null
+fi
+
 exit 0
