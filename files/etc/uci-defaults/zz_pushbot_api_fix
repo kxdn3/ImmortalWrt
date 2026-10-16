@@ -1,0 +1,38 @@
+#!/bin/sh
+# PushBot 首装兜底（随固件进入镜像；首次开机执行一次后由系统自动删除）
+#
+# 背景：
+#   luci-app-pushbot 自 v6.01-r12 起为适配新版 apk 包管理器，把
+#     /usr/bin/pushbot/api/{diy.json,ipv4.list,ipv6.list,ip_blacklist}
+#   声明为 conffiles（用于保护用户改动），并靠包内 preinst/postinst 做
+#   「改过则保留、未改则更新」的处理。
+#   而本固件是以 `apk add --no-scripts` 方式构建的（详见该包 Makefile 注释），
+#   包脚本在构建期不执行，个别设备首装后 pushbot 读取这些数据文件异常，
+#   表现为「服务起不来」；在线 apk 重装（postinst 完整跑一遍）后即恢复。
+#   本脚本把这一步在首次开机时补上，做到刷完即用、不必再手动重装。
+#
+# 设计原则：
+#   1. 只补「缺失或为空」的文件，绝不覆盖用户已有内容
+#      （与包内 preinst 的「改过则保留」语义保持一致）；
+#   2. 数据源用 /usr/share/pushbot/defaults/ —— 该目录包内自带、不属
+#      conffiles，每次升级都会被刷新为最新默认值；
+#   3. 幂等，重复执行无副作用。
+
+D=/usr/share/pushbot/defaults
+A=/usr/bin/pushbot/api
+
+[ -d "$D" ] && [ -d "$A" ] || exit 0
+
+# 1) 补齐 api/ 下的数据文件（仅当缺失或为空时）
+for f in ipv4.list ipv6.list diy.json; do
+	[ -s "$A/$f" ] && continue
+	[ -s "$D/$f" ] && cp -f "$D/$f" "$A/$f"
+done
+
+# ip_blacklist 不在 defaults 里（出厂即为空），缺失则建一个空的
+[ -f "$A/ip_blacklist" ] || printf '\n' > "$A/ip_blacklist"
+
+# 2) 理顺服务状态：重装包时由 postinst 承担此事，固件首装做不了，这里补上
+[ -x /etc/init.d/pushbot ] && /etc/init.d/pushbot restart >/dev/null 2>&1
+
+exit 0
