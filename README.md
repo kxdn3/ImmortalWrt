@@ -45,7 +45,7 @@
 **每次开机自动生效**：
 
 - **型号**：LuCI 状态页「型号」显示为「畅网P2」（覆盖 DMI 探测结果；不动机型标识 board_name，不影响 sysupgrade）
-- **CPU / 网络调优**（`/etc/rc.local`，面向 J4125 等入门级 x86）：调频固定为 `performance`；物理网卡的队列中断轮询分到 4 个核；开启 RPS/RFS 让多核参与收包与转发（注意：单条 PPPoE 会话是单队列，吃不到多核）
+- **CPU / 网络调优**（`/etc/rc.local`，面向 J4125 等入门级 x86）：调频固定为 `performance`；物理网卡的队列中断轮询分到各 CPU（掩码按实际核数自适应）；提高软中断积压上限（`netdev_max_backlog=2048`）。RPS/RFS 不在此设置，交由固件内置的 `packet_steering` 服务处理（它按 CPU 拓扑自适应分配并在接口事件后自动重应用）
 
 **定时任务**（micrond）：
 
