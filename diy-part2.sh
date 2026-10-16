@@ -107,29 +107,13 @@ CONFIG_PACKAGE_luci-i18n-samba4-zh_Hans=y
 CONFIG_PACKAGE_autosamba=y
 EOF
 
-# ========== 移除 coremark 包自带的「每天 4:00 跑分」定时任务 ==========
-# coremark 包安装时会带上两个文件：
-#   /etc/uci-defaults/xxx-coremark  首次开机往 /etc/crontabs/root 写入
-#                                   "0 4 * * * /etc/coremark.sh"
-#   /etc/coremark.sh                被上面那条 cron 调用的跑分脚本
-# 而 busybox crond 在固件里是启用的（/etc/rc.d/S50cron），所以刷机后第一晚会跑两次
-# CoreMark：4:00 包自带的 + 5:00 我们的 98_coremark_once（写 UCI + 主页显示）。
-# 修复：改包 Makefile 的 install 段，不让这两个文件进入固件。
-# 注意：feeds install 后 package/feeds/<feed>/<包名> 是符号链接，find 默认不跟随，
-# 所以优先用 glob（能正确展开符号链接），再用 find -L 兜底。
-CM_MK=$(ls package/feeds/*/coremark/Makefile 2>/dev/null | head -1)
-[ -n "$CM_MK" ] || CM_MK=$(find -L package -maxdepth 5 -path "*coremark/Makefile" 2>/dev/null | head -1)
-if [ -z "$CM_MK" ]; then
-    echo "!! 未找到 coremark 包 Makefile，无法移除其自带的定时任务" >&2
-    exit 1
-fi
-sed -i '\|INSTALL_BIN) \./coremark\.sh|d' "$CM_MK"
-sed -i '\|INSTALL_BIN) \./coremark |d' "$CM_MK"
-if grep -q 'INSTALL_BIN) \./coremark ' "$CM_MK"; then
-    echo "!! coremark 包 install 段与预期不符（$CM_MK），请检查后再编译" >&2
-    exit 1
-fi
-echo ">>> 已移除 coremark 包自带的 4:00 定时任务（避免与 5:00 一次性任务重复跑分）"
+# ========== CoreMark 跑分：改用 coremark 包自带方案（不改包）==========
+# 包自带完整闭环（不再需要任何自定义代码）：
+#   /etc/uci-defaults/xxx-coremark  首启写入 crontab "0 4 * * * /etc/coremark.sh"
+#   /etc/coremark.sh                跑分 → 结果写入 /etc/bench.log → 自删 crontab 条目
+#   LuCI 状态页 10_system.js        「型号」行 = model + readfile('/etc/bench.log')
+# 此前曾改包 Makefile 移除这两个文件、另建 5:00/micrond/widget 一套方案，
+# 现全部撤除，回归上游原生实现（零自定义维护）。
 
 # ========== miniupnpd 补丁适配上游 2.3.11 ==========
 # 上游 feeds/packages 把 miniupnpd 升到 2.3.11（仅改 Makefile，未刷新补丁集），

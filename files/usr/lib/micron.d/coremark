@@ -1,1 +1,0 @@
-0 5 * * * /usr/bin/coremark_run.sh

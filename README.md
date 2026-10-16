@@ -45,16 +45,16 @@
 
 - **光猫管理页访问**：WAN 口（eth1）自动配置 192.168.0.2 / 192.168.1.2 双网段地址，局域网可直接访问桥接光猫管理页（192.168.0.1 或 192.168.1.1），已并入 wan 防火墙区
 - **时区**：出厂默认为 UTC 时自动设为北京时间（GMT+8）
-- **CoreMark 跑分**：首次启动后凌晨 5:00 自动跑分一次，分数显示在 LuCI 主页「CoreMark 跑分」卡片；跑完写入标记文件 `/etc/coremark_done`，此后不再重复跑（若到点时机器未开机，则下次开机的 5:00 补跑）。coremark 包自带的每日 4:00 跑分任务已在构建时移除
 
 **每次开机自动生效**：
 
 - **型号**：LuCI 状态页「型号」显示为「畅网P2」（覆盖 DMI 探测结果；不动机型标识 board_name，不影响 sysupgrade）
 - **CPU / 网络调优**（`/etc/rc.local`，面向 J4125 等入门级 x86）：调频固定为 `performance`；物理网卡的队列中断轮询分到各 CPU（掩码按实际核数自适应）；提高软中断积压上限（`netdev_max_backlog=2048`）。RPS/RFS 不在此设置，交由固件内置的 `packet_steering` 服务处理（它按 CPU 拓扑自适应分配并在接口事件后自动重应用）
 
-**定时任务**（micrond）：
+**定时任务**（busybox crond，条目写入 `/etc/crontabs/root`）：
 
-- **磁盘 TRIM**：每周日凌晨 6:00 对支持 discard 的文件系统执行 `fstrim -a`（结果写入系统日志，`logread | grep fstrim` 可查）
+- **CoreMark 跑分**：使用 coremark 包自带机制 —— 首次开机登记 `0 4 * * *` 条目，**下一个凌晨 4:00 跑分一次**，跑完由脚本自动移除该条目（一次性）。分数写入 `/etc/bench.log`，由 LuCI 状态页**「型号」行**读取显示，形如 `畅网P2 (CpuMark : 12643.587331  Scores)`
+- **磁盘 TRIM**：每周日**凌晨 6:00** 对支持 discard 的文件系统执行 `fstrim -a`（结果写入系统日志，`logread | grep fstrim` 可查）
 
 **界面调整**：
 

@@ -1,0 +1,37 @@
+#!/bin/sh
+# 首次开机执行一次（uci-defaults，执行后自动删除）：
+#   1. 系统时区若仍为出厂默认 UTC，改为北京时间（Asia/Shanghai / CST-8）
+#   2. 注册 fstrim 定时任务（每周日凌晨 6:00）到 busybox crontab
+#
+# 说明：CoreMark 跑分使用 coremark 包**自带**的机制 ——
+#   /etc/uci-defaults/xxx-coremark 于首次开机向 crontab 写入
+#   "0 4 * * * /etc/coremark.sh"，跑完由脚本自删该条目（一次性）；
+#   分数写入 /etc/bench.log，由 LuCI 状态页「型号」行读取显示
+#   （luci-mod-status 的 10_system.js: model + readfile('/etc/bench.log')）。
+#   故此处不再涉及跑分。
+
+# 1) 时区：仅当还是出厂默认 UTC 时才设，尊重用户已改过的时区
+if [ "$(uci -q get system.@system[0].zonename)" = "UTC" ]; then
+    uci set system.@system[0].zonename='Asia/Shanghai'
+    uci set system.@system[0].timezone='CST-8'
+    uci commit system
+fi
+
+# 2) fstrim 定时任务：每周日 06:00 对支持 discard 的文件系统执行 fstrim -a，
+#    输出写入系统日志（logread | grep fstrim 可查）。
+#    与 coremark 自带任务共用 /etc/crontabs/root —— 它的清理逻辑只删除含
+#    "coremark" 的行，不会影响本行。
+CRON=/etc/crontabs/root
+if [ ! -f "$CRON" ]; then
+    mkdir -p /etc/crontabs
+    : > "$CRON"
+fi
+if ! grep -q 'fstrim' "$CRON" 2>/dev/null; then
+    echo '0 6 * * 0 /usr/sbin/fstrim -av 2>&1 | logger -t fstrim' >> "$CRON"
+    crontab "$CRON" 2>/dev/null || /etc/init.d/cron reload 2>/dev/null
+fi
+
+# 3) 确保 busybox crond 开机自启（通常固件已默认启用，此处幂等兜底）
+/etc/init.d/cron enable 2>/dev/null
+
+exit 0
