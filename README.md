@@ -16,8 +16,10 @@
 | 刷机包 | ext4 / squashfs 各两份：`combined-efi`（UEFI）和 `combined`（纯 BIOS） |
 | 不会产出 | ISO、rootfs.tar.gz、单独的 rootfs.img、VMDK、VDI、VHDX、QCOW2 |
 | 默认 IP | **10.0.0.1** |
-| 默认主题 | **Argon** |
+| 默认端口 | LAN = `eth0`，WAN = `eth1` |
+| 默认主题 | **Argon**（固件内另含 Bootstrap 及暗/亮变体，可在界面切换） |
 | 默认 Shell | **zsh** |
+| 界面语言 | 跟随浏览器（`lang='auto'`）：中文浏览器自动显示简体中文，无需手动切换 |
 | Kernel 分区 | 16 MiB |
 | RootFS 分区 | 2048 MiB (2GB) |
 | GRUB 引导区 / 分区对齐 (ALIGN) | 1024k（1 MiB；兼顾 GRUB core.img 嵌入空间与 SSD/NVMe 对齐） |
@@ -28,11 +30,14 @@
 - **Lucky** (`luci-app-lucky`)
 - **Argon 主题** (`luci-theme-argon`) — 默认主题
 - **DiskMan** (`luci-app-diskman`)
-- **DockerMan** (`luci-app-dockerman`)
+- **DockerMan** (`luci-app-dockerman`，含 `docker` / `dockerd` / `containerd` / `runc` 运行时)
+- **UPnP / NAT-PMP** (`luci-app-upnp`)
 - **PushBot 全能推送** (`luci-app-pushbot`)
 - **SMB4 文件共享** (`luci-app-samba4`，含 wsdd2 Windows 网络发现）
 - **ttyd 网页终端** (`luci-app-ttyd-strict`)
 - **nlbwmon 带宽监控** (`luci-app-nlbwmon`)
+
+**其他内置工具**：`htop` `nano` `vim` `tcpdump` `iperf3` `ethtool` `lspci` `lsusb` `lscpu` `lm-sensors` `smartctl`（硬盘健康检测） `curl` `wget-ssl`；存储工具 `fdisk` `parted` `mkfs.ext4` / `tune2fs` / `resize2fs`（e2fsprogs）、`block-mount`（分区自动挂载）；Shell 另含 `bash`（默认仍为 `zsh`）。
 
 ## 内置自动化功能
 
@@ -40,7 +45,7 @@
 
 - **光猫管理页访问**：WAN 口（eth1）自动配置 192.168.0.2 / 192.168.1.2 双网段地址，局域网可直接访问桥接光猫管理页（192.168.0.1 或 192.168.1.1），已并入 wan 防火墙区
 - **时区**：出厂默认为 UTC 时自动设为北京时间（GMT+8）
-- **CoreMark 跑分**：首次启动后凌晨 5:00 自动跑分一次，分数显示在 LuCI 主页「CoreMark 跑分」卡片，跑完自动取消任务
+- **CoreMark 跑分**：首次启动后凌晨 5:00 自动跑分一次，分数显示在 LuCI 主页「CoreMark 跑分」卡片；跑完写入标记文件 `/etc/coremark_done`，此后不再重复跑（若到点时机器未开机，则下次开机的 5:00 补跑）。coremark 包自带的每日 4:00 跑分任务已在构建时移除
 
 **每次开机自动生效**：
 
@@ -54,6 +59,17 @@
 **界面调整**：
 
 - 状态页「本地时间」显示星期几、且不带时区后缀（`2026年10月15日星期四 08:29:05`）；勾选「系统 → 系统 → 完整时区名称」后显示完整时区名（如 `… 中国标准时间 08:29:05`）
+
+## 镜像版本差异
+
+| | **ext4 版** | **squashfs 版** |
+|---|---|---|
+| 根文件系统 | ext4 直接挂载 | squashfs 只读层 + overlay（f2fs，挂载带 `discard`，自带 TRIM） |
+| **恢复出厂** | ❌ **不支持** —— 实测 `firstboot -y` 报 `MTD partition 'rootfs_data' not found`（x86 ext4 无此分区） | ✅ **支持** —— LuCI「系统 → 备份/刷写固件 → 恢复出厂设置」，或 `firstboot -y && reboot` |
+| 适合 | 需要直接改根分区内容 | 需要恢复出厂能力 / 自动 TRIM |
+
+> - 恢复出厂只清空 overlay 配置层，**不影响**磁盘上自行划分的其他分区（如影音存储分区）。
+> - **跨固件升级**（从其他固件换到本固件）务必取消「保留配置」勾选 —— 旧固件的整套 `/etc/config` 会被原样带过来（含 `/etc/board-base.json`，会阻止本固件重新生成默认配置），从而出现拿不到 IP 等异常。
 
 ## 登录信息
 
