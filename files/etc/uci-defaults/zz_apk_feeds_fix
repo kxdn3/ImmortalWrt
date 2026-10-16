@@ -1,0 +1,33 @@
+#!/bin/sh
+# 清理两行无效的 apk 源（每次全新刷机后自动生效，执行一次即删除）
+#
+# 现象：
+#   LuCI 软件包页 / `apk update` 报
+#     ERROR: wget: exited with error 8
+#     ... 2 unavailable, 0 stale; 10670 distinct packages available
+#     apk update 命令失败了，代码为 2
+#
+# 原因：
+#   本固件为 ImmortalWrt SNAPSHOT，distfeeds 里列了 8 个源，其中两个在
+#   官方源上【根本不存在】（实测 HTTP 404，非临时故障）：
+#     * packages/x86_64/video  —— ImmortalWrt 官方 snapshot 不构建 video
+#        feed（官方 /snapshots/packages/x86_64/ 下只有 base、luci、
+#        packages、routing、telephony 五个目录）
+#     * packages/x86_64/nikki  —— 本固件额外引入的第三方 feed，官方不提供
+#   这两个死源会让每次 apk update 以退出码 2 结束（LuCI 弹错误框），
+#   尽管其余 6 个源（约 1 万个包）完全可用。
+#
+# 做法：
+#   从 /etc/apk/repositories.d/distfeeds.list 中删除这两行。幂等。
+#   仅供参考：distfeeds.list 是 build-specific，每次 sysupgrade 会重新
+#   生成，所以放在这里每次首启清理，而不是手工改文件。
+#
+# 恢复：若日后官方补上对应 feed（例如开始构建 video），删掉本文件即可。
+
+F=/etc/apk/repositories.d/distfeeds.list
+[ -f "$F" ] || exit 0
+
+sed -i -e '/packages\/x86_64\/video\/packages\.adb/d' \
+       -e '/packages\/x86_64\/nikki\/packages\.adb/d' "$F"
+
+exit 0
