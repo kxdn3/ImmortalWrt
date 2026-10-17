@@ -1,0 +1,29 @@
+# zsh 全局 rc（本文件由固件预置，位于 /etc/zsh/zshrc）
+#
+# 背景：
+#   zsh 包自带 /etc/zsh/zprofile，内容为
+#       emulate sh -c 'source /etc/profile'
+#   目的是让 zsh 继承 PATH / alias / 环境变量。但 /etc/profile 里是
+#   bash/ash 风格的提示符：
+#       PS1='\u@\h:\w\$ '
+#       PS1='\[\e]0;\u@\h: \w\a\]' + 上一行      （TERM 为 xterm* 时）
+#   它会作为环境变量被带进 zsh。zsh 不认识 \[ \] \u \w \e，于是提示符
+#   原样显示成：
+#       \[\e]0;\u@\h: \w\a\]\u@\h:\w\$
+#
+#   本文件用 zsh 原生格式重新设置提示符（zsh 中 PS1 与 PROMPT 是同一个
+#   变量），从而覆盖 /etc/profile 带进来的那个值。
+#
+# 自定义：直接改下面的 PROMPT 即可。zsh 常用转义：
+#   %n 用户名   %m 主机名   %~ 当前目录（~ 缩写）   %# root 显示 #，否则 %
+#   %F{颜色}...%f 前景色    %B...%b 粗体
+
+# 基础提示符：user@host:dir#
+PROMPT='%n@%m:%~ %# '
+
+# xterm 系终端额外设置窗口标题
+case "$TERM" in
+	xterm*|rxvt*|screen*|tmux*)
+		PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
+		;;
+esac
