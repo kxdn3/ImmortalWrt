@@ -5,9 +5,12 @@
 # 改参数直接编辑本文件，重启生效。
 #
 # 说明（避免误解）：
-#   * CPU 满载时 performance 与 ondemand 都是最高频，所以本脚本【不提升满载性能】。
-#     governor 的价值是消除突发流量下的升频延迟（代理 / 游戏首包更稳），代价是空闲温度略升。
-#     想省电把 GOV 改回 ondemand 即可。
+#   * CPU 满载时各 governor 都是最高频，所以本脚本【不提升满载性能】。
+#     区别只在【空闲 / 低负载】时是否降频：
+#       - performance：锁最高频（响应最快，但常年 2.0GHz+，温度高 10~15°C）
+#       - powersave / schedutil / ondemand：空闲可降到 800MHz（省电、凉快）
+#     本脚本默认按驱动【自适应】选择（见下方 GOV 段），一般无需改动。
+#     想强制锁高频就设 GOV=performance。
 #   * 中断亲和让多个核分担网卡收包；但单条 PPPoE 会话是单队列、pppd 单线程，
 #     PPPoE 转发吃不到多核 —— 这里主要提升 LAN 侧转发与代理流量。
 #   * RPS / RFS 不在此处设置：固件内置的 packet_steering 服务（S25packet_steering，
@@ -15,13 +18,35 @@
 #     并在每次接口事件后自动重应用，优于此处硬编码（硬编码在非 4 核机器上还会写入失败）。
 #     如需启用 RFS，需给 packet_steering 传入流表数（其 local_flows 默认为 0，即关闭）。
 
-GOV=performance          # 调频策略：performance / ondemand
+GOV=auto                 # 调频策略：auto（自适应）/ performance / powersave / schedutil / ondemand
 BACKLOG=2048             # 网卡软中断积压上限（packet_steering 不管此项）
 
 # --- 1) 调频策略 ---
+# 自适应：不同平台的 cpufreq 驱动可用 governor 不同，写死一个会静默失败。
+#   intel_pstate / intel_cpufreq：只有 performance / powersave
+#       → 选 powersave（它才是动态调频，名字有误导）
+#   acpi-cpufreq：优先 schedutil（比 ondemand 更现代），退化到 ondemand
+if [ "$GOV" = "auto" ]; then
+    DRV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver 2>/dev/null)
+    GOVS=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors 2>/dev/null)
+    case "$DRV" in
+        intel_pstate|intel_cpufreq)
+            GOV=powersave
+            ;;
+        *)
+            case " $GOVS " in
+                *" schedutil "*) GOV=schedutil ;;
+                *" ondemand "*)  GOV=ondemand ;;
+                *)               GOV=powersave ;;
+            esac
+            ;;
+    esac
+fi
+
 for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
     [ -w "$g" ] && echo "$GOV" > "$g"
 done
+logger -t rc.local "cpufreq: governor=$GOV" 2>/dev/null
 
 # --- 2) 网卡中断亲和：把物理网卡的队列中断轮流分到各 CPU ---
 # 掩码按实际核数自适应，避免在非 4 核机器上写越界的 cpumask
