@@ -281,8 +281,25 @@ jobs:
     - name: 生成 Release 标签
       id: tag
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+
+        # ---------- 上游变更摘要 ----------
+        # 本次编译所用的 ImmortalWrt 主线 commit
+        NEW_SHA=$(git -C openwrt rev-parse HEAD)
+        NEW_SHORT=$(echo "$NEW_SHA" | cut -c1-7)
+
+        # 上一版固件对应的上游 commit：从上一个 Release 的说明里取回。
+        # 记录方式是 body 末尾的 HTML 注释 <!-- upstream: <sha> -->，渲染时不可见。
+        PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)
+        OLD_SHA=""
+        if [ -n "$PREV_TAG" ]; then
+          OLD_SHA=$(gh release view "$PREV_TAG" --json body --jq '.body' 2>/dev/null \
+            | grep -oE 'upstream: [0-9a-f]{7,40}' | head -1 | awk '{print $2}' || true)
+        fi
+
         cat > release.txt << 'EOF'
         只包含 x86_64 物理机整盘刷机包（ext4 + squashfs）：
 
@@ -294,6 +311,42 @@ jobs:
         不含虚拟机镜像、ISO 和 rootfs 归档。
         写盘时关掉 Secure Boot，启动模式选 UEFI（老 BIOS 机用不带 efi 的那一个）。
         EOF
+
+        # ---------- 追加「上游更新」 ----------
+        {
+          echo ""
+          echo "---"
+          echo ""
+          echo "## 上游更新（ImmortalWrt 主线）"
+          echo ""
+          echo "本版基于 \`${NEW_SHORT}\`。"
+          if [ -n "$OLD_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ]; then
+            OLD_SHORT=$(echo "$OLD_SHA" | cut -c1-7)
+            echo ""
+            echo "<details><summary>相比上一版（<code>${OLD_SHORT}</code>）的上游提交，点击展开</summary>"
+            echo ""
+            CHANGES=$(gh api "repos/immortalwrt/immortalwrt/compare/${OLD_SHA}...${NEW_SHA}" \
+              --jq '.commits[] | "- " + (.commit.message | split("\n")[0])' 2>/dev/null | tail -60 || true)
+            if [ -n "$CHANGES" ]; then
+              echo "$CHANGES"
+              echo ""
+              echo "> 仅列最近 60 条；完整列表见 [compare](https://github.com/immortalwrt/immortalwrt/compare/${OLD_SHA}...${NEW_SHA})。"
+            else
+              echo "- （对比失败：可能上游已 rebase 或该 commit 已被清理）"
+            fi
+            echo ""
+            echo "</details>"
+          elif [ -z "$OLD_SHA" ]; then
+            echo ""
+            echo "> 未找到上一版的上游记录（首次启用此功能）。从下一版起会自动列出两个版本之间的上游提交。"
+          else
+            echo ""
+            echo "> 上游无变化（与上一版同一 commit）。"
+          fi
+          echo ""
+          echo "<!-- upstream: ${NEW_SHA} -->"
+        } >> release.txt
+
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件到 Release
