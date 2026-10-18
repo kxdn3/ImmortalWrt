@@ -291,6 +291,13 @@ jobs:
         NEW_SHA=$(git -C openwrt rev-parse HEAD)
         NEW_SHORT=$(echo "$NEW_SHA" | cut -c1-7)
 
+        # 编译前上游最后一条提交的信息（作者 / 时间 / 标题）
+        # 用 tab 分隔，避免提交标题里出现 '|' 时切错列
+        LAST_LINE=$(git -C openwrt log -1 --format='%an%x09%ai%x09%s' 2>/dev/null || true)
+        LAST_AUTHOR=$(echo "$LAST_LINE" | cut -f1)
+        LAST_TIME=$(echo "$LAST_LINE" | cut -f2)
+        LAST_MSG=$(echo "$LAST_LINE" | cut -f3)
+
         # 上一版固件对应的上游 commit：从上一个 Release 的说明里取回。
         # 记录方式是 body 末尾的 HTML 注释 <!-- upstream: <sha> -->，渲染时不可见。
         PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)
@@ -319,7 +326,13 @@ jobs:
           echo ""
           echo "## 上游更新（ImmortalWrt 主线）"
           echo ""
-          echo "本版基于 \`${NEW_SHORT}\`。"
+          echo "- **本版基于**：\`${NEW_SHORT}\`"
+          if [ -n "$LAST_AUTHOR" ]; then
+            echo "- **最后一条上游提交**：${LAST_MSG}"
+            echo "- **作者**：${LAST_AUTHOR}"
+            echo "- **时间**：${LAST_TIME}"
+            echo "- **Hash**：\`${NEW_SHA}\`"
+          fi
           if [ -n "$OLD_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ]; then
             OLD_SHORT=$(echo "$OLD_SHA" | cut -c1-7)
             echo ""
