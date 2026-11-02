@@ -300,7 +300,11 @@ jobs:
 
         # 上一版固件对应的上游 commit：从上一个 Release 的说明里取回。
         # 记录方式是 body 末尾的 HTML 注释 <!-- upstream: <sha> -->，渲染时不可见。
-        PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)
+        # 注意：本仓库所有 Release 的 createdAt 完全相同（都是 2026-10-18T04:08:12Z），
+        # 不能用「列表第一条」当上一版；改为按 tag 名取最大者（tag 为 2026.10.28-0739 格式，字典序即时间序）。
+        PREV_TAG=$(gh release list --limit 100 --json tagName \
+          --jq 'sort_by(.tagName) | reverse | .[0].tagName // empty' 2>/dev/null \
+          | tr -d '"' || true)
         OLD_SHA=""
         if [ -n "$PREV_TAG" ]; then
           OLD_SHA=$(gh release view "$PREV_TAG" --json body --jq '.body' 2>/dev/null \
@@ -385,22 +389,27 @@ jobs:
       run: |
         set -euo pipefail
         KEEP=10
-        # 按创建时间倒序列出 release，保留最新 KEEP 个，删除其余（含对应 git tag）
-        mapfile -t TAGS < <(gh release list --limit 100 --json tagName,createdAt \
-          --jq 'sort_by(.createdAt) | reverse | .[].tagName')
-        total=${#TAGS[@]}
-        echo "当前 Release 数量: $total，保留最新 $KEEP 个"
-        if [ "$total" -le "$KEEP" ]; then
-          echo "无需清理"
-          exit 0
-        fi
-        idx=$KEEP
-        while [ "$idx" -lt "$total" ]; do
-          tag="${TAGS[$idx]}"
+        # 【曾经的 bug】原来按 createdAt 排序：本仓库所有 Release 的 createdAt 完全相同
+        # （都是 2026-10-18T04:08:12Z），sort_by 等于没排序；jq 的 sort_by 是稳定排序，
+        # 会保留 `gh release list` 的「新→旧」顺序，再 reverse 就成了「旧→新」，
+        # 被删掉的正是最新的那几个 —— 新编译的固件每次刚发布就被这一步删掉。
+        # 【修正】改按 tag 名排序：tag 形如 2026.10.28-0739，字典序即时间序，不依赖时间字段。
+        mapfile -t TAGS < <(gh release list --limit 100 --json tagName \
+          --jq "sort_by(.tagName) | reverse | .[${KEEP}:][].tagName" | tr -d '"')
+        echo "保留最新 ${KEEP} 个 Release，本次待删除 ${#TAGS[@]} 个"
+        # 双保险：无论排序如何，绝不删除本次运行刚创建的 Release
+        CURRENT_TAG="${{ steps.tag.outputs.release_tag }}"
+        for tag in ${TAGS[@]+"${TAGS[@]}"}; do
+          [ -n "$tag" ] || continue
+          if [ -n "$CURRENT_TAG" ] && [ "$tag" = "$CURRENT_TAG" ]; then
+            echo "跳过本次刚创建的 Release: $tag"
+            continue
+          fi
           echo "删除 Release: $tag"
           gh release delete "$tag" --yes || echo "  release 删除失败，跳过"
           echo "删除 tag: $tag"
           gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag" \
             || echo "  tag 删除失败，跳过"
-          idx=$((idx + 1))
         done
+        echo "===== 清理后保留的 Release（应为最新 ${KEEP} 个）====="
+        gh release list --limit 20 || true
